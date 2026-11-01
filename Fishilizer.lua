@@ -1,15 +1,15 @@
 --[[
 
-Fishilizer is now open-sourced.
+LX Serializer is now open-sourced.
 
 A gift from Garfield Cat Presents
 
 The source is available for anyone who wants to contribute to its development
 
-Fishilizer is still being worked on, and there is more to come.
+LX Serializer is still being worked on, and there is more to come.
 There are features to improve, and things to fix
 
-Eventually, once Fishilizer reaches its full power, it will no longer
+Eventually, once LX Serializer reaches its full power, it will no longer
 be open-sourced. Until then, enjoy this special gift and make the most of it.
 
 If you find bugs or have suggestions, feel free to share them with the
@@ -17,7 +17,7 @@ community. Feedback is always appreciated!!
 
 Please give credit to the original project if you use or modify its code.
 
-Thank you to everyone who has supported Fishilizer so far.
+Thank you to everyone who has supported LX Serializer so far.
 
 Enjoy this special gift <3
 
@@ -29,7 +29,7 @@ Made by Garfield Cat Presents.
 
 local Fish = {}
 Fish.VERSION = "10.8.1"
-Fish.NAME = "Fishilizer"
+Fish.NAME = "LX Serializer"
 --[[
 
 i added these because i was bored and had nothing else to do before i started this (adhd me xD)
@@ -146,7 +146,7 @@ local function ConWrite(s)
     if not _consoleReady then
         _consoleReady = true
         if type(Console.create) == "function" then pcall(Console.create) end
-        if type(Console.title) == "function" then pcall(Console.title, "Fishilizer v" .. tostring(Fish.VERSION)) end
+        if type(Console.title) == "function" then pcall(Console.title, "LX Serializer v" .. tostring(Fish.VERSION)) end
     end
     pcall(Console.print, tostring(s) .. "\n")
 end
@@ -242,7 +242,7 @@ Fish.CloseConsole = closeConsoleWithVulns
 
 local function ConInit()
     ConWriteBanner()
-    ConWrite("[Fishilizer] v" .. tostring(Fish.VERSION))
+    ConWrite("[LX Serializer] v" .. tostring(Fish.VERSION))
 end
 
 local _logCache = {}
@@ -250,7 +250,7 @@ local _logPath = nil
 
 local function logFilePath()
     if _logPath then return _logPath end
-    local out = tostring(Fish.Options.OUT or "Fishilizer")
+    local out = tostring(Fish.Options.OUT or "LXSerializer")
     local path = out .. "/Fishilizer.log"
     if IO.makefolder and IO.isfolder then
         local okF, exists = pcall(IO.isfolder, out)
@@ -280,7 +280,7 @@ local function flushLog()
 end
 
 local function log(msg)
-    local line = "[Fishilizer] " .. tostring(msg)
+    local line = "[LX Serializer] " .. tostring(msg)
     pcall(function() print(line) end)
     ConWrite(line)
     if Fish.Options.LogToFile then
@@ -356,7 +356,7 @@ Fish.Options = {
     Console = true,
     CloseConsole = false,
     AutoRun = true,
-    OUT = "Fishilizer",
+    OUT = "LXSerializer",
     DataAPIURL = "https://civilation.github.io/Fishilizer/",
     APIDumpURL = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/API-Dump.json", -- why do i still use this
 
@@ -790,7 +790,7 @@ local function bumpStatus(prefix, current, total)
     
     if pct ~= _lastConsolePct then
         _lastConsolePct = pct
-        ConWrite("[Fishilizer] " .. prefix .. " " .. current .. "/" .. total .. " (" .. pct .. "%)")
+        ConWrite("[LX Serializer] " .. prefix .. " " .. current .. "/" .. total .. " (" .. pct .. "%)")
     end
     task.wait()
 end
@@ -1146,7 +1146,7 @@ local function walkRef(root, d, opts, refs, charRefs, coreRefs)
     refs[root] = "RBX" .. Walker.refCount
     if Walker.refCount % 500 == 0 then
         setStatusText("Saving game.. scanning " .. Walker.refCount)
-        ConWrite("[Fishilizer] scanning " .. Walker.refCount .. " refs")
+        ConWrite("[LX Serializer] scanning " .. Walker.refCount .. " refs")
         task.wait()
     end
     local ok, kids = pcall(function() return root:GetChildren() end)
@@ -1234,7 +1234,7 @@ local function readTerrainVoxels(terrain, res)
                 chunkIdx = chunkIdx + 1
                 if chunkIdx % 8 == 0 then
                     setStatusText("Saving game.. terrain chunk " .. chunkIdx)
-                    ConWrite("[Fishilizer] terrain chunk " .. chunkIdx)
+                    ConWrite("[LX Serializer] terrain chunk " .. chunkIdx)
                     task.wait()
                 end
             end
@@ -1373,7 +1373,7 @@ local function emitInst(buf, inst, d, opts, decompileCache, refs, totalRefs)
             if okb and type(bc) == "string" and bc ~= "" then src = b64(bc) end
         end
         if not src or src == "" then
-            src = "-- [Fishilizer] No source recovered for " .. tostring(cls) .. " \"" .. tostring(inst.Name) .. "\""
+            src = "-- [LX Serializer] No source recovered for " .. tostring(cls) .. " \"" .. tostring(inst.Name) .. "\""
         end
         table.insert(buf, pad .. '    <ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>')
     end
@@ -1431,7 +1431,7 @@ end
 local function buildReadmeSource()
     local tpl = DATA.readme_template
     if type(tpl) ~= "string" or tpl == "" then
-        tpl = "-- Fishilizer v" .. Fish.VERSION .. "\nGame saved with Fishilizer\n"
+        tpl = "-- LX Serializer v" .. Fish.VERSION .. "\nGame saved with LX Serializer\n"
     end
     local subs = {
         VERSION = Fish.VERSION,
@@ -1517,7 +1517,7 @@ local function restoreBackpack()
 end
 
 local function ensureOutFolder()
-    local out = tostring(Fish.Options.OUT or "Fishilizer")
+    local out = tostring(Fish.Options.OUT or "LXSerializer")
     if IO.makefolder and IO.isfolder then
         local okF, exists = pcall(IO.isfolder, out)
         if not okF or not exists then pcall(IO.makefolder, out) end
@@ -1550,7 +1550,7 @@ function Sink:write(str)
         pcall(IO.appendfile, self.part, blob)
         self.buf = {}
         self.size = 0
-        ConWrite("[Fishilizer] wrote " .. tostring(self.total) .. "b")
+        ConWrite("[LX Serializer] wrote " .. tostring(self.total) .. "b")
     end
 end
 
@@ -1619,7 +1619,7 @@ function Fish.Save(instance, name, userOpts)
 
     if not opts.Callback and not opts.Clipboard and not IO.writefile then
         log("writefile unavailable")
-        notify("Fishilizer: FAILED", "Executor missing writefile", 10)
+        notify("LX Serializer: FAILED", "Executor missing writefile", 10)
         return nil
     end
 
@@ -1674,7 +1674,7 @@ function Fish.Save(instance, name, userOpts)
     end
 
     if #roots == 0 then
-        notify("Fishilizer: FAILED", "No valid root instance", 10)
+        notify("LX Serializer: FAILED", "No valid root instance", 10)
         return nil
     end
 
@@ -1700,7 +1700,7 @@ function Fish.Save(instance, name, userOpts)
 
         log("Walked " .. Walker.refCount .. " instances")
         setStatusText("Saving game.. decompiling")
-        ConWrite("[Fishilizer] Decompiling")
+        ConWrite("[LX Serializer] Decompiling")
         task.wait()
 
         local buf = {}
@@ -1726,7 +1726,7 @@ function Fish.Save(instance, name, userOpts)
                         scriptCount = scriptCount + 1
                         setStatusText("Decompiling " .. scriptCount .. "/" .. scriptTotal)
                         if scriptCount % 5 == 0 or scriptCount == scriptTotal then
-                            ConWrite("[Fishilizer] Decompiling " .. scriptCount .. "/" .. scriptTotal)
+                            ConWrite("[LX Serializer] Decompiling " .. scriptCount .. "/" .. scriptTotal)
                         end
                         local ok, res = pcall(Fish._decompileFn, inst)
                         if ok and type(res) == "string" and res ~= "" then decompileCache[inst] = res end
@@ -1738,7 +1738,7 @@ function Fish.Save(instance, name, userOpts)
         end
 
         setStatusText("Saving game.. writing")
-        ConWrite("[Fishilizer] Writing")
+        ConWrite("[LX Serializer] Writing")
 
         table.insert(buf, '<?xml version="1.0" encoding="utf-8"?>')
         table.insert(buf, '<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">')
@@ -1800,7 +1800,7 @@ function Fish.Save(instance, name, userOpts)
         if sink then
             sink:write(table.concat(buf, "\n"))
             buf = {}
-            ConWrite("[Fishilizer] Finishing write")
+            ConWrite("[LX Serializer] Finishing write")
             local okFinish = sink:finish(primaryPath)
             if okFinish then
                 xml = primaryPath
@@ -1820,14 +1820,14 @@ function Fish.Save(instance, name, userOpts)
         if opts.Callback and type(opts.Callback) == "function" then
             pcall(opts.Callback, xml)
             setStatusText("Saved!")
-            ConWrite("[Fishilizer] Saved!")
+            ConWrite("[LX Serializer] Saved!")
             return xml
         end
 
         if opts.Clipboard then
             pcall(function() if IO.setclipboard then IO.setclipboard(xml) end end)
             setStatusText("Saved!")
-            ConWrite("[Fishilizer] Saved!")
+            ConWrite("[LX Serializer] Saved!")
             return xml
         end
 
@@ -1856,12 +1856,12 @@ function Fish.Save(instance, name, userOpts)
 
         if not wrote then
             setStatusText("Save failed (writefile)")
-            ConWrite("[Fishilizer] Save failed")
+            ConWrite("[LX Serializer] Save failed")
             return xml
         end
 
         setStatusText("Saved!")
-        ConWrite("[Fishilizer] Saved!")
+        ConWrite("[LX Serializer] Saved!")
         task.wait(0.4)
         return xml
     end)
@@ -1875,7 +1875,7 @@ function Fish.Save(instance, name, userOpts)
     if not okSave then
         log("Save error: " .. tostring(result))
         setStatusText("Save failed: " .. tostring(result):sub(1, 60))
-        ConWrite("[Fishilizer] Save error: " .. tostring(result))
+        ConWrite("[LX Serializer] Save error: " .. tostring(result))
         return nil
     end
 

@@ -1,9 +1,9 @@
 -- Core.lua
--- Top-level core state and helpers for Fishilizer (developer-friendly modular source).
+-- Top-level core state and helpers for LX Serializer (developer-friendly modular source).
 
 local Fish = {}
 Fish.VERSION = "10.1.1"
-Fish.NAME = "Fishilizer"
+Fish.NAME = "LX Serializer"
 
 Fish.Options = {
     Decompile = false,
@@ -35,7 +35,7 @@ Fish.Options = {
     KillAllScripts = false,
     AntiIdle = false,
     Anonymous = false,
-    OUT = "Fishilizer",
+    OUT = "LXSerializer",
     Depth = 1000,
     Terrain = true,
     CSG = true,
@@ -83,8 +83,8 @@ local IO = {
 }
 
 local function log(msg)
-    pcall(function() print("[Fishilizer] " .. tostring(msg)) end)
-    pcall(function() warn("[Fishilizer] " .. tostring(msg)) end)
+    pcall(function() print("[LX Serializer] " .. tostring(msg)) end)
+    pcall(function() warn("[LX Serializer] " .. tostring(msg)) end)
 end
 
 local function clean(s)

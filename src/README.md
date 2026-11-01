@@ -1,6 +1,6 @@
 # src/README
 
-This directory holds the modular source files for Fishilizer.
+This directory holds the modular source files for LX Serializer.
 
 Organization (files are concatenated by build.lua in this order):
 

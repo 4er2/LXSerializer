@@ -1,31 +1,31 @@
 
 <div align="center">
 
-<img src="https://files.catbox.moe/5uumgz.png" alt="Fishilizer Logo" width="150" />
+<img src="logo.png" alt="LX Serializer Logo" width="150" />
 
-# Fishilizer
+# LX Serializer
 
 **A Roblox place serializer written in Lua.**
 
-Fishilizer saves Roblox instances and their properties to `.rbxlx` files that can be opened in Roblox Studio.
+LX Serializer saves Roblox instances and their properties to `.rbxlx` files that can be opened in Roblox Studio.
 
-[![Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=flat-square&logo=github)](https://github.com/Civilation/Fishilizer)
-[![Source](https://img.shields.io/badge/Source-Lua-blue?style=flat-square)](https://github.com/Civilation/Fishilizer/blob/main/Fishilizer.lua)
-[![Version](https://img.shields.io/badge/Version-10.8.1-brightgreen?style=flat-square)](https://github.com/Civilation/Fishilizer)
+[![Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=flat-square&logo=github)](https://github.com/Civilation/LXSerializer)
+[![Source](https://img.shields.io/badge/Source-Lua-blue?style=flat-square)](https://github.com/Civilation/LXSerializer/blob/main/Fishilizer.lua)
+[![Version](https://img.shields.io/badge/Version-10.8.1-brightgreen?style=flat-square)](https://github.com/Civilation/LXSerializer)
 [![Discord](https://img.shields.io/badge/Discord-Community-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/GZDXBMjndT)
 [![Cash App](https://img.shields.io/badge/Cash%20App-Support-00C244?style=flat-square&logo=cashapp&logoColor=white)](https://cash.app/$aeroglass)
 
-[GitHub Repository](https://github.com/Civilation/Fishilizer) · [Source Code](https://github.com/Civilation/Fishilizer/blob/main/Fishilizer.lua) · [Raw Lua Source](https://raw.githubusercontent.com/Civilation/Fishilizer/main/Fishilizer.lua)
+[GitHub Repository](https://github.com/Civilation/LXSerializer) · [Source Code](https://github.com/Civilation/LXSerializer/blob/main/Fishilizer.lua) · [Raw Lua Source](https://raw.githubusercontent.com/Civilation/LXSerializer/main/Fishilizer.lua)
 
 </div>
 
 ## Overview
 
-Fishilizer reads the DataModel of a running Roblox game and saves the instances it can access. It supports property discovery, terrain data, CSG data, attributes, tags, and script extraction when the environment allows it.
+LX Serializer reads the DataModel of a running Roblox game and saves the instances it can access. It supports property discovery, terrain data, CSG data, attributes, tags, and script extraction when the environment allows it.
 
 You can save an entire place, export scripts separately, save models without scripts, or choose a specific instance to save.
 
-Fishilizer uses Roblox API information, fallback property maps, and engine reflection when available to find properties to save. Some properties need special handling because they contain binary data or values that cannot be written as ordinary XML.
+LX Serializer uses Roblox API information, fallback property maps, and engine reflection when available to find properties to save. Some properties need special handling because they contain binary data or values that cannot be written as ordinary XML.
 
 The goal is to save as much of the original place as possible. Some properties and data may not be accessible, so exported files might not be exact copies of the original.
 
@@ -52,11 +52,11 @@ The goal is to save as much of the original place as possible. Some properties a
 
 ### Requirements
 
-Fishilizer depends on the functions available in the environment where it runs.
+LX Serializer depends on the functions available in the environment where it runs.
 
 Depending on the features you use, you may need:
 
-- HTTP access to download Fishilizer and its supporting data.
+- HTTP access to download LX Serializer and its supporting data.
 - `loadstring` support.
 - File-writing functions such as `writefile`.
 - `getproperties()` or other property discovery functions.
@@ -66,25 +66,25 @@ Not every environment supports all of these functions. Features that depend on u
 
 ### Automatic execution
 
-Load Fishilizer with the following code:
+Load LX Serializer with the following code:
 
 ```lua
 loadstring(game:HttpGetAsync(
-    "https://raw.githubusercontent.com/Civilation/Fishilizer/main/Fishilizer.lua"
+    "https://raw.githubusercontent.com/Civilation/LXSerializer/main/Fishilizer.lua"
 ))()
 ```
 
-This loads Fishilizer and runs its default save behavior.
+This loads LX Serializer and runs its default save behavior.
 
 ### Manual execution
 
-To control what gets saved, disable automatic execution before loading Fishilizer.
+To control what gets saved, disable automatic execution before loading LX Serializer.
 
 ```lua
 getgenv().FISHILIZER_NO_AUTORUN = true
 
 local Fish = loadstring(game:HttpGetAsync(
-    "https://raw.githubusercontent.com/Civilation/Fishilizer/main/Fishilizer.lua"
+    "https://raw.githubusercontent.com/Civilation/LXSerializer/main/Fishilizer.lua"
 ))()
 
 Fish.Init()
@@ -106,7 +106,7 @@ Saving to disk requires an environment with the appropriate file-writing functio
 
 ## Export modes
 
-Fishilizer has three main export modes.
+LX Serializer has three main export modes.
 
 | Mode | Description |
 | --- | --- |
@@ -148,7 +148,7 @@ The main functions available through the `Fish` table include:
 
 | Function | Description |
 | --- | --- |
-| `Fish.Init()` | Loads supporting data and prepares Fishilizer for use. |
+| `Fish.Init()` | Loads supporting data and prepares LX Serializer for use. |
 | `Fish.Save(instance, name?, opts?)` | Saves an instance or an array of instances. |
 | `Fish.SavePlace(name?, opts?)` | Saves the current place. |
 | `Fish.SaveInstance(instance, name?, opts?)` | Saves a specific instance. |
@@ -158,7 +158,7 @@ The main functions available through the `Fish` table include:
 | `Fish.LoadData()` | Loads supporting serializer data. |
 | `Fish.ApplyAPIDump(data)` | Reads API dump information for property discovery. |
 
-Fishilizer also registers convenience aliases in the execution environment:
+LX Serializer also registers convenience aliases in the execution environment:
 
 | Alias | Description |
 | --- | --- |
@@ -170,7 +170,7 @@ Fishilizer also registers convenience aliases in the execution environment:
 | `serialize(name?, opts?)` | Saves the current place. |
 | `saveinstance(inst, name?, opts?)` | Saves a specific instance. |
 
-For additional information, see the [Fishilizer GitHub repository](https://github.com/Civilation/Fishilizer).
+For additional information, see the [LX Serializer GitHub repository](https://github.com/Civilation/LXSerializer).
 
 ## Configuration
 
@@ -199,7 +199,7 @@ getgenv().FISHILIZER_CONFIG = {
 }
 
 loadstring(game:HttpGetAsync(
-    "https://raw.githubusercontent.com/Civilation/Fishilizer/main/Fishilizer.lua"
+    "https://raw.githubusercontent.com/Civilation/LXSerializer/main/Fishilizer.lua"
 ))()
 ```
 
@@ -241,21 +241,21 @@ This changes the settings for one export without changing the global configurati
 | `TerrainResolution` | `8` | Sets terrain voxel resolution. |
 | `TerrainCellCap` | `4194304` | Sets the maximum number of terrain cells to capture. |
 | `Depth` | `100` | Sets the maximum traversal depth. |
-| `OUT` | `"Fishilizer"` | Sets the default output folder name. |
+| `OUT` | `"LXSerializer"` | Sets the default output folder name. |
 | `AvoidFileOverwrite` | `true` | Avoids intentionally overwriting existing files. |
 | `ShowStatus` | `true` | Shows the progress interface when available. |
 | `Notify` | `true` | Enables supported notifications. |
 
 These are the main options and their documented defaults. Other options may be available in the current version.
 
-See the [Fishilizer GitHub repository](https://github.com/Civilation/Fishilizer) for project information and source code.
+See the [LX Serializer GitHub repository](https://github.com/Civilation/LXSerializer) for project information and source code.
 
 > [!WARNING]
 > `KillAllScripts` is an available option that defaults to `false`. Enabling it can disable accessible script instances during saving and affect the running game.
 
 ## How it works
 
-Fishilizer goes through the selected instances and builds an XML file from the data it can access.
+LX Serializer goes through the selected instances and builds an XML file from the data it can access.
 
 1. Loads configuration and supporting property data.
 2. Gets property information from API dumps, fallback maps, and reflection when available.
@@ -268,11 +268,11 @@ Fishilizer goes through the selected instances and builds an XML file from the d
 
 Some properties need special handling because they contain binary data or values that cannot be written as ordinary XML.
 
-Supporting API data includes class maps, property lists, binary properties, and other information used by Fishilizer.
+Supporting API data includes class maps, property lists, binary properties, and other information used by LX Serializer.
 
 ## Limitations
 
-Fishilizer cannot save every Roblox place perfectly. The result depends on which instances and properties the environment can access.
+LX Serializer cannot save every Roblox place perfectly. The result depends on which instances and properties the environment can access.
 
 ### Script source
 
@@ -365,34 +365,34 @@ File-writing and clipboard functions depend on the environment. Successfully cre
 
 The unchecked items are things that could be worked on in the future. They are not finished features.
 
-## Support Fishilizer
+## Support LX Serializer
 
-If you'd like to support Fishilizer and its development, you can send a donation through Cash App. It's completely optional, but any support is appreciated. <3
+If you'd like to support LX Serializer and its development, you can send a donation through Cash App. It's completely optional, but any support is appreciated. <3
 
-[![Cash App](https://img.shields.io/badge/Cash%20App-Support%20Fishilizer-00C244?style=flat-square&logo=cashapp&logoColor=white)](https://cash.app/$aeroglass)
+[![Cash App](https://img.shields.io/badge/Cash%20App-Support%20LX%20Serializer-00C244?style=flat-square&logo=cashapp&logoColor=white)](https://cash.app/$aeroglass)
 
 Cash App: [$aeroglass](https://cash.app/$aeroglass)
 
 ## Links
 
-- [GitHub Repository](https://github.com/Civilation/Fishilizer)
-- [Source Code](https://github.com/Civilation/Fishilizer/blob/main/Fishilizer.lua)
-- [Raw Lua Source](https://raw.githubusercontent.com/Civilation/Fishilizer/main/Fishilizer.lua)
+- [GitHub Repository](https://github.com/Civilation/LXSerializer)
+- [Source Code](https://github.com/Civilation/LXSerializer/blob/main/Fishilizer.lua)
+- [Raw Lua Source](https://raw.githubusercontent.com/Civilation/LXSerializer/main/Fishilizer.lua)
 - [Discord](https://discord.gg/GZDXBMjndT)
 - [Cash App](https://cash.app/$aeroglass)
 
 ## Disclaimer
 
-Fishilizer is an independent project for Roblox serialization and game development research. It is not affiliated with or endorsed by Roblox Corporation.
+LX Serializer is an independent project for Roblox serialization and game development research. It is not affiliated with or endorsed by Roblox Corporation.
 
 Only save places and data you are allowed to access. Respect other creators' work and Roblox's rules.
 
-Saving and decompilation depend on the environment. Fishilizer cannot guarantee that every instance, property, or script will be recovered. Keep backups of important files before using it.
+Saving and decompilation depend on the environment. LX Serializer cannot guarantee that every instance, property, or script will be recovered. Keep backups of important files before using it.
 
 <div align="center">
 
 **Made with ❤️ by Garfield Cat Presents**
 
-*Thanks for checking out Fishilizer!*
+*Thanks for checking out LX Serializer!*
 
 </div>
