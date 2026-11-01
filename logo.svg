@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1100" role="img" aria-label="LX Serializer mascot logo">
+  <defs>
+    <linearGradient id="hair" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#d9f5ff"/>
+      <stop offset="50%" stop-color="#9adcf8"/>
+      <stop offset="100%" stop-color="#6db8e8"/>
+    </linearGradient>
+    <linearGradient id="dress" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#eef4ff"/>
+    </linearGradient>
+    <linearGradient id="sleeve" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f2f7a"/>
+      <stop offset="100%" stop-color="#204ca4"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#34ff78" flood-opacity="0.9"/>
+    </filter>
+  </defs>
+
+  <rect width="900" height="1100" fill="#000000"/>
+
+  <!-- silhouette outline glow -->
+  <g fill="none" stroke="#32ff7a" stroke-width="10" filter="url(#glow)">
+    <path d="M206 348 C190 260, 230 192, 310 181 C375 172, 420 201, 456 233 C486 259, 497 283, 528 283 C565 283, 596 236, 653 211 C724 180, 787 206, 811 260 C833 311, 824 390, 796 467 C775 527, 742 570, 720 631 C687 714, 672 785, 693 864 C711 937, 676 987, 614 983 C559 980, 520 932, 502 858 C486 790, 446 745, 379 706 C348 689, 334 648, 332 610 C329 557, 286 523, 247 497 C220 478, 193 442, 206 348 Z"/>
+  </g>
+
+  <!-- hair -->
+  <g>
+    <path d="M270 188 C316 120, 415 88, 492 96 C582 106, 648 156, 676 214 C705 278, 696 359, 642 408 C623 381, 603 363, 580 346 C553 324, 521 315, 488 313 C471 312, 443 323, 426 337 C405 355, 386 375, 383 408 C359 370, 341 331, 319 307 C289 277, 248 258, 233 229 C220 203, 239 201, 270 188 Z" fill="url(#hair)"/>
+    <path d="M235 254 C184 253, 136 313, 124 366 C114 416, 129 469, 167 482 C194 491, 220 484, 236 466 C209 435, 211 393, 223 356 C233 324, 251 295, 235 254 Z" fill="url(#hair)"/>
+    <path d="M681 272 C744 270, 804 320, 815 381 C826 442, 806 489, 764 501 C741 507, 714 503, 692 486 C722 453, 710 418, 705 378 C699 332, 694 299, 681 272 Z" fill="url(#hair)"/>
+    <path d="M294 121 C311 77, 348 46, 392 48 C430 51, 450 83, 442 111 C436 132, 411 140, 390 141 C362 143, 334 138, 294 121 Z" fill="#dceef8"/>
+    <circle cx="399" cy="169" r="8" fill="#d5b6d8"/>
+    <path d="M335 203 C363 174, 420 176, 454 208" fill="none" stroke="#2a2c30" stroke-width="8" stroke-linecap="round"/>
+    <path d="M374 137 C350 99, 324 88, 291 90" fill="none" stroke="#2a2c30" stroke-width="12" stroke-linecap="round"/>
+    <path d="M443 130 C470 88, 512 82, 544 97" fill="none" stroke="#2a2c30" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="332" cy="189" r="9" fill="#f4d7e6"/>
+    <circle cx="477" cy="183" r="9" fill="#f4d7e6"/>
+    <path d="M342 205 C366 221, 384 224, 404 220 C420 218, 438 211, 453 202" fill="none" stroke="#c97fa8" stroke-width="6" stroke-linecap="round"/>
+    <path d="M376 248 C385 257, 405 258, 417 250" fill="none" stroke="#d77a9d" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  <!-- face -->
+  <g>
+    <path d="M268 285 C292 256, 340 243, 392 245 C450 247, 504 260, 526 289 C553 326, 549 391, 511 425 C476 456, 418 466, 378 463 C325 459, 286 435, 269 394 C255 360, 259 314, 268 285 Z" fill="#f8e9ea"/>
+    <path d="M302 318 C321 300, 343 296, 363 306" fill="none" stroke="#d7a0af" stroke-width="5" stroke-linecap="round"/>
+    <path d="M458 308 C478 296, 499 298, 519 314" fill="none" stroke="#d7a0af" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="343" cy="354" r="10" fill="#2d2a2d"/>
+    <circle cx="489" cy="355" r="10" fill="#2d2a2d"/>
+    <circle cx="340" cy="349" r="3" fill="#ffffff"/>
+    <circle cx="486" cy="350" r="3" fill="#ffffff"/>
+    <path d="M390 377 C416 390, 448 390, 470 377" fill="none" stroke="#c9687b" stroke-width="6" stroke-linecap="round"/>
+    <path d="M354 411 C385 429, 429 429, 465 410" fill="none" stroke="#b3626d" stroke-width="5" stroke-linecap="round"/>
+    <path d="M291 282 C348 233, 415 224, 495 246 C519 252, 542 264, 561 285" fill="none" stroke="#d8ebff" stroke-width="16" stroke-linecap="round"/>
+  </g>
+
+  <!-- neck and torso -->
+  <g>
+    <path d="M392 464 L416 520 L395 597 L368 597 L348 520 Z" fill="#f4d9d2"/>
+    <path d="M410 463 L450 521 L465 594 L492 594 L511 522 Z" fill="#f7dfe4"/>
+    <path d="M254 595 C299 521, 355 495, 392 495 C432 495, 494 521, 548 595 L548 718 C517 687, 470 641, 392 641 C315 641, 262 686, 254 718 Z" fill="url(#dress)"/>
+    <path d="M372 505 L286 620 C265 650, 257 683, 262 716 C326 698, 350 676, 372 550 Z" fill="#f4f6ff"/>
+    <path d="M413 505 L507 611 C529 642, 542 674, 538 716 C476 694, 446 674, 413 548 Z" fill="#f4f6ff"/>
+  </g>
+
+  <!-- dress details -->
+  <g>
+    <path d="M231 666 C311 717, 344 728, 392 728 C438 728, 480 717, 551 668 L586 760 C542 782, 495 803, 392 812 C288 803, 243 782, 198 760 Z" fill="#f6f8ff"/>
+    <path d="M293 626 C325 608, 355 610, 392 634 C430 609, 461 607, 497 626 L470 733 C446 754, 415 764, 392 764 C366 764, 336 754, 314 734 Z" fill="#f8fbff"/>
+    <path d="M311 715 C302 755, 304 814, 309 854 L294 877 C266 847, 251 795, 256 758 Z" fill="#0d3a98"/>
+    <path d="M470 715 C479 756, 481 816, 476 852 L493 879 C521 850, 541 805, 536 760 Z" fill="#0d3a98"/>
+    <path d="M233 684 C177 715, 146 759, 135 820 C171 827, 211 814, 245 785 Z" fill="#0e2f8d"/>
+    <path d="M550 683 C603 715, 635 758, 648 816 C612 824, 569 814, 535 785 Z" fill="#0e2f8d"/>
+    <circle cx="300" cy="635" r="12" fill="#ffffff" stroke="#3f7ef2" stroke-width="4"/>
+    <circle cx="484" cy="635" r="12" fill="#ffffff" stroke="#3f7ef2" stroke-width="4"/>
+    <circle cx="392" cy="614" r="18" fill="#ffffff" stroke="#3f7ef2" stroke-width="5"/>
+    <circle cx="392" cy="637" r="5" fill="#a5d0ff"/>
+    <path d="M286 686 L345 696 L330 745 L272 735 Z" fill="#0c2b77"/>
+    <path d="M498 686 L444 696 L460 745 L517 735 Z" fill="#0c2b77"/>
+    <path d="M351 761 C372 777, 389 778, 411 759 L422 810 C402 822, 381 825, 360 813 Z" fill="#0a244e"/>
+    <path d="M205 812 C238 819, 261 832, 285 854 C265 902, 250 937, 121 824 C157 820, 179 815, 205 812 Z" fill="#f6f6f6"/>
+    <path d="M577 813 C608 816, 626 832, 641 856 C643 902, 615 939, 536 843 C552 824, 561 817, 577 813 Z" fill="#f6f6f6"/>
+  </g>
+
+  <!-- arms and hands -->
+  <g>
+    <path d="M237 549 C196 586, 174 634, 177 684 C215 698, 258 693, 282 656 L303 627 C294 592, 271 565, 237 549 Z" fill="url(#sleeve)"/>
+    <path d="M549 549 C592 586, 615 633, 610 681 C572 694, 529 689, 504 653 L484 627 C492 594, 514 565, 549 549 Z" fill="url(#sleeve)"/>
+    <path d="M240 642 C214 673, 200 717, 204 757 C232 764, 277 761, 301 712 Z" fill="#f3dfe1"/>
+    <path d="M560 643 C586 672, 599 719, 594 757 C567 765, 523 761, 500 711 Z" fill="#f3dfe1"/>
+  </g>
+
+  <!-- bows and hair clips -->
+  <g>
+    <path d="M383 184 L412 145 L440 184 Z" fill="#f4d2dd"/>
+    <circle cx="278" cy="258" r="14" fill="#b17bff"/>
+    <circle cx="525" cy="259" r="14" fill="#b17bff"/>
+    <circle cx="287" cy="242" r="12" fill="#fff"/>
+    <circle cx="535" cy="242" r="12" fill="#fff"/>
+    <path d="M262 300 C284 299, 297 313, 295 333 C278 332, 266 318, 262 300 Z" fill="#0d2d80"/>
+    <path d="M547 302 C567 302, 580 316, 579 334 C562 336, 549 320, 547 302 Z" fill="#0d2d80"/>
+  </g>
+
+  <!-- legs and shoes -->
+  <g>
+    <path d="M284 814 C322 814, 348 827, 360 872 L309 980 C297 1014, 273 1032, 239 1016 C203 998, 198 963, 204 920 L238 863 Z" fill="#f4efef"/>
+    <path d="M500 814 C462 814, 436 827, 425 872 L476 980 C489 1014, 513 1032, 547 1016 C584 998, 587 962, 579 921 L548 863 Z" fill="#f4efef"/>
+    <path d="M231 990 C268 984, 289 999, 316 1042 L241 1042 C219 1018, 213 1000, 231 990 Z" fill="#f6e9ef"/>
+    <path d="M560 990 C522 984, 500 999, 475 1042 L551 1042 C572 1018, 579 1000, 560 990 Z" fill="#f6e9ef"/>
+    <path d="M246 1027 C278 1019, 313 1033, 325 1062 L213 1062 C217 1041, 227 1034, 246 1027 Z" fill="#d2dff8"/>
+    <path d="M545 1027 C513 1019, 478 1033, 466 1062 L578 1062 C572 1041, 564 1034, 545 1027 Z" fill="#d2dff8"/>
+  </g>
+
+  <!-- sign -->
+  <g>
+    <path d="M252 543 L509 543 C558 543, 597 575, 596 624 L591 673 C588 713, 555 738, 502 738 L255 738 C207 738, 172 705, 172 659 L170 617 C168 575, 198 543, 252 543 Z" fill="#f7f7f7"/>
+    <path d="M175 652 C170 751, 205 793, 261 808 C285 814, 346 816, 398 812 C450 808, 519 803, 557 792 C603 779, 619 734, 613 648 Z" fill="#white" opacity="0.18"/>
+    <text x="382" y="655" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="54" fill="#0d1d52" letter-spacing="2">LX Serializer</text>
+  </g>
+</svg>
