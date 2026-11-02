@@ -28,222 +28,31 @@ Made by Garfield Cat Presents.
 
 
 local Fish = {}
-Fish.VERSION = "10.8.1"
-Fish.NAME = "LX Serializer"
---[[
 
-i added these because i was bored and had nothing else to do before i started this (adhd me xD)
-
-  ]]
-
-Fish.BannerLines = {
-    [[                          _.'.__]],
-    [[                      _.'      .]],
-    [[':'.               .''   __ __  .]],
-    [[  '.:._          ./  _ ''     "-'.__]],
-    [[.'''-: """-._    | .                "-"._]],
-    [[ '.     .    "._.'                       "]],
-    [[    '.   "-.___ .        .'          .  :o'.]],
-    [[      |   .----  .      .           .'     (]],
-    [[       '|  ----. '   ,.._                _-']],
-    [[        .' .---  |.""  .-:;.. _____.----']],
-    [[        |   .-""""    |      ']],
-    [[      .'  _'         .'    _']],
-    [[     |_.-'    -cat-   '-.']],
-}
-
-Fish.Banner = table.concat(Fish.BannerLines, "\n")
-
-Fish.Bootstrap = {
-    scriptURL = "https://fishilizer.github.io/fishilizer.lua",
-    versionURL = "https://fishilizer.github.io/fishilizer.lua",
-}
 
 local HttpService = game:GetService("HttpService")
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
-
-local function resolveIO(name)
-    local g = (getgenv and getgenv()) or _G
-    if g and type(g[name]) == "function" then return g[name] end
-    if type(rawget(_G, name)) == "function" then return rawget(_G, name) end
-    if g then
-        for _, v in pairs(g) do
-            if type(v) == "table" and type(v[name]) == "function" then
-                return v[name]
-            end
-        end
-    end
-    return nil
-end
+local CoreGui = game:GetService("CoreGui")
 
 local IO = {
-    writefile = resolveIO("writefile"),
-    readfile = resolveIO("readfile"),
-    makefolder = resolveIO("makefolder"),
-    isfolder = resolveIO("isfolder"),
-    isfile = resolveIO("isfile"),
-    delfile = resolveIO("delfile"),
-    appendfile = resolveIO("appendfile"),
-    setclipboard = resolveIO("setclipboard"),
-    getproperties = resolveIO("getproperties"),
+    writefile = writefile,
+    readfile = readfile,
+    makefolder = makefolder,
+    isfolder = isfolder,
+    isfile = isfile,
+    delfile = delfile,
+    appendfile = appendfile,
+    setclipboard = setclipboard,
+    getproperties = getproperties,
+    gethiddenproperty = gethiddenproperty,
+    decompile = decompile,
+    getscriptbytecode = getscriptbytecode,
+    gethui = gethui,
+    protectgui = protectgui,
 }
 ---lowk if you dont have any of these on ur executor its ggs
-
-local Console = (function()
-    local g = (getgenv and getgenv()) or _G or {}
-    local c = {}
-    c.create = g.rconsolecreate or g.rconsole_create
-    c.print = g.rconsoleprint or g.rconsole_print
-    c.title = g.rconsolesettitle or g.rconsole_title
-    c.clear = g.rconsoleclear or g.rconsole_clear
-    c.close = g.rconsoleclose or g.rconsole_close
-    if type(c.print) == "function" then return c end
-    if type(g.getconsole) == "function" then
-        local ok, con = pcall(g.getconsole)
-        if ok and con and type(con.Print) == "function" then
-            c.print = function(s) pcall(con.Print, con, s) end
-            c.title = function(s) pcall(con.SetTitle, con, s) end
-            c.clear = function() pcall(con.Clear, con) end
-            c.close = function() pcall(con.Close, con) end
-            c.create = function() end
-            return c
-        end
-    end
-    for _, v in pairs(g) do
-        if type(v) == "table" then
-            if type(v.rconsoleprint) == "function" then
-                c.print = v.rconsoleprint
-                c.create = c.create or v.rconsolecreate
-                c.title = c.title or v.rconsolesettitle
-                c.clear = c.clear or v.rconsoleclear
-                c.close = c.close or v.rconsoleclose
-                return c
-            end
-            if type(v.Print) == "function" and type(v.SetTitle) == "function" then
-                c.print = function(s) pcall(v.Print, v, s) end
-                c.title = function(s) pcall(v.SetTitle, v, s) end
-                c.clear = function() pcall(v.Clear, v) end
-                c.close = function() pcall(v.Close, v) end
-                c.create = function() end
-                return c
-            end
-        end
-    end
-    return nil
-end)()
-
-local _consoleReady = false
-local _consoleClosed = false
-
-local function ConWrite(s)
-    if _consoleClosed then return end
-    if not Console or type(Console.print) ~= "function" then
-        pcall(function() print(tostring(s)) end)
-        return
-    end
-    if not _consoleReady then
-        _consoleReady = true
-        if type(Console.create) == "function" then pcall(Console.create) end
-        if type(Console.title) == "function" then pcall(Console.title, "LX Serializer v" .. tostring(Fish.VERSION)) end
-    end
-    pcall(Console.print, tostring(s) .. "\n")
-end
-
-local function ConWriteBanner()
-    for _, line in ipairs(Fish.BannerLines) do
-        ConWrite(line)
-    end
-end
-
-local _closeAttempted = false
-local _closeTried = {}
-
-local function _tryClose(fn, ...)
-    if _closeAttempted or type(fn) ~= "function" or _closeTried[fn] then return false end
-    _closeTried[fn] = true
-    local ok = pcall(fn, ...)
-    _closeAttempted = true
-    return ok
-end
-
-local function resolveHttp()
-    local g = (getgenv and getgenv()) or _G or {}
-    local candidates = { g.request, g.http_request }
-    if type(g.http) == "table" then table.insert(candidates, g.http.request) end
-    if type(g.Http) == "table" then table.insert(candidates, g.Http.request) end
-    if type(g.HTTP) == "table" then table.insert(candidates, g.HTTP.request) end
-    for _, v in pairs(g) do
-        if type(v) == "table" then
-            local rf = v.request or v.http_request or v.Request
-            if type(rf) == "function" then table.insert(candidates, rf) end
-        end
-    end
-    for _, fn in ipairs(candidates) do
-        if type(fn) == "function" then
-            return function(opts)
-                local ok, res = pcall(fn, opts)
-                if ok and res then return res end
-                return nil
-            end
-        end
-    end
-    return nil
-end
-
-local function closeConsoleWithVulns()
-    if _consoleClosed then return end
-    local g = (getgenv and getgenv()) or _G or {}
-
-    if Console and type(Console.close) == "function" then
-        if _tryClose(Console.close) then _consoleClosed = true return end
-    end
-
-    local direct = {
-        g.rconsoleclose, g.rconsole_close, g.rconsoleclosewindow,
-        g.closeconsole, g.close_console, g.closerconsole,
-    }
-    for _, fn in ipairs(direct) do
-        if _tryClose(fn) then _consoleClosed = true return end
-    end
-
-    for _, v in pairs(g) do
-        if type(v) == "table" then
-            for _, k in ipairs({ "close", "Close", "closeConsole", "CloseConsole", "CloseWindow", "closewindow", "Kill", "kill" }) do
-                local fn = v[k]
-                if type(fn) == "function" then
-                    if _tryClose(fn, v) then _consoleClosed = true return end
-                end
-            end
-        end
-    end
-
-    local req = resolveHttp()
-    if req then
-        local ports = { 49664, 6977, 27060, 12345, 4563 }
-        for _, port in ipairs(ports) do
-            if _closeAttempted then break end
-            pcall(function()
-                req({ Url = "http://127.0.0.1:" .. port .. "/close", Method = "GET", Timeout = 1 })
-                req({ Url = "http://127.0.0.1:" .. port .. "/kill", Method = "GET", Timeout = 1 })
-            end)
-        end
-        _closeAttempted = true
-    end
-
-    if not _consoleClosed then
-        pcall(function() ConWrite("\27[2J\27[H\27[0;0H") end)
-        _consoleClosed = true
-    end
-end
-
-Fish.CloseConsole = closeConsoleWithVulns
-
-local function ConInit()
-    ConWriteBanner()
-    ConWrite("[LX Serializer] v" .. tostring(Fish.VERSION))
-end
 
 local _logCache = {}
 local _logPath = nil
@@ -251,74 +60,110 @@ local _logPath = nil
 local function logFilePath()
     if _logPath then return _logPath end
     local out = tostring(Fish.Options.OUT or "LXSerializer")
-    local path = out .. "/Fishilizer.log"
     if IO.makefolder and IO.isfolder then
         local okF, exists = pcall(IO.isfolder, out)
         if not okF or not exists then pcall(IO.makefolder, out) end
     end
-    _logPath = path
-    return path
+    _logPath = out .. "/LXSerializer.log"
+    return _logPath
 end
 
 local function flushLog()
-    if not Fish.Options.LogToFile then return end
+    if not Fish.Options.LogToFile or #_logCache == 0 then return end
     local path = logFilePath()
+    local blob = table.concat(_logCache, "\n") .. "\n"
+    _logCache = {}
     if IO.appendfile then
-        local okA = pcall(IO.appendfile, path, "")
-        if okA then
-            for i = 1, #_logCache do
-                pcall(IO.appendfile, path, _logCache[i] .. "\n")
-            end
-            _logCache = {}
-            return
-        end
-    end
-    if IO.writefile then
-        local blob = table.concat(_logCache, "\n")
+        pcall(IO.appendfile, path, blob)
+    elseif IO.writefile then
         pcall(IO.writefile, path, blob)
     end
 end
 
+local function pushLog(text)
+    if not Fish.Options.LogToFile then return end
+    _logCache[#_logCache + 1] = "[" .. os.date("!%H:%M:%S") .. "] " .. tostring(text)
+    if #_logCache >= 32 then flushLog() end
+end
+
 local function log(msg)
-    local line = "[LX Serializer] " .. tostring(msg)
-    pcall(function() print(line) end)
-    ConWrite(line)
-    if Fish.Options.LogToFile then
-        local stamp = os.date("!%H:%M:%S")
-        _logCache[#_logCache + 1] = "[" .. stamp .. "] " .. tostring(msg)
-        if #_logCache >= 32 then flushLog() end
+    pushLog(msg)
+end
+
+local Status = { token = 0 }
+
+function Status.mount()
+    if Status.label and Status.gui and Status.gui.Parent then return Status.label end
+
+    local gui = Instance.new("ScreenGui")
+    gui.Name = HttpService:GenerateGUID(false)
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 999999
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    local label = Instance.new("TextLabel")
+    label.Name = "Status"
+    label.AnchorPoint = Vector2.new(0.5, 0)
+    label.Position = UDim2.new(0.5, 0, 0, 14)
+    label.Size = UDim2.new(0, 0, 0, 34)
+    label.AutomaticSize = Enum.AutomaticSize.X
+    label.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+    label.BackgroundTransparency = 0.15
+    label.BorderSizePixel = 0
+    label.Font = Enum.Font.Code
+    label.TextSize = 16
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Text = ""
+    label.Parent = gui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = label
+
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 14)
+    padding.PaddingRight = UDim.new(0, 14)
+    padding.Parent = label
+
+    if IO.protectgui then pcall(IO.protectgui, gui) end
+    gui.Parent = IO.gethui and IO.gethui() or CoreGui
+
+    Status.gui = gui
+    Status.label = label
+    return label
+end
+
+function Status.fade(delay)
+    local token = Status.token
+    task.delay(delay or 4, function()
+        if Status.token ~= token or not Status.label then return end
+        local label, gui = Status.label, Status.gui
+        local info = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        pcall(function()
+            TweenService:Create(label, info, { TextTransparency = 1, BackgroundTransparency = 1 }):Play()
+        end)
+        task.wait(0.7)
+        if Status.token ~= token then return end
+        pcall(function() gui:Destroy() end)
+        Status.gui = nil
+        Status.label = nil
+    end)
+end
+
+local function setStatusText(text)
+    text = tostring(text)
+    Status.token = Status.token + 1
+    pushLog(text)
+    if not Fish.Options.ShowStatus then return end
+    local ok, label = pcall(Status.mount)
+    if ok and label then
+        label.TextTransparency = 0
+        label.BackgroundTransparency = 0.15
+        label.Text = text
     end
 end
 
-local function resolveBytecode()
-    if type(getscriptbytecode) == "function" then return getscriptbytecode end
-    local g = (getgenv and getgenv()) or _G
-    if g then
-        for _, v in pairs(g) do
-            if type(v) == "table" and type(v.getscriptbytecode) == "function" then
-                return v.getscriptbytecode
-            end
-        end
-    end
-    return nil
-end
-
-local function resolveDecompile()
-    if type(decompile) == "function" then return decompile end
-    if type(decompile_script) == "function" then return decompile_script end
-    local g = (getgenv and getgenv()) or _G
-    if g then
-        if type(g.decompile) == "function" then return g.decompile end
-        if type(g.decompile_script) == "function" then return g.decompile_script end
-        for _, v in pairs(g) do
-            if type(v) == "table" then
-                if type(v.decompile) == "function" then return v.decompile end
-                if type(v.decompile_script) == "function" then return v.decompile_script end
-            end
-        end
-    end
-    return nil
-end
 
 --- a list of apis
 Fish.Options = {
@@ -344,23 +189,16 @@ Fish.Options = {
     EmitAttributes = false,
     StripCharacters = true,
     StripCoreScripts = true,
-    TerrainResolution = 8,
-    TerrainCellCap = 4194304,
     Depth = 100,
     Notify = true,
     ShowStatus = true,
     ReadMe = true,
     StreamToFile = true,
-    StreamChunk = 262144,
+    StreamChunk = 1048576,
     LogToFile = true,
-    Console = true,
-    CloseConsole = false,
     AutoRun = true,
     OUT = "LXSerializer",
-    DataAPIURL = "https://civilation.github.io/Fishilizer/",
     APIDumpURL = "https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/API-Dump.json", -- why do i still use this
-
-    LunaUXURL = "https://lunaux-decompiler.dev/api/decompile",
 }
 
 local DATA = {
@@ -381,49 +219,6 @@ local DATA = {
     decompiler = nil,
 }
 
-local SKIP_SVC = {}
-local SKIP_PROP = {}
-local BINARY_PROPS = {}
-local CONTENT_PROP_EXACT = {}
-local REAL_CONTENT_PROPS = {}
-local CORE_SCRIPT_NAMES = {}
-local CHARACTER_CLASSES = {}
-local CRITICAL_PROPS = {}
-local CRITICAL_PROPS_SET = {}
-local INSTANCE_SPECIFIC = {}
-local ATTR_TYPE_IDS = { string=0x02, boolean=0x03, number=0x04 }
-local _dataLoaded = false
-
-
----basically just got claude to do this part for me since i dont know how to make fallbacks :pray:
-local FALLBACK = {
-    meta = { version = "0.0.0" },
-    tables = {
-        instance_specific = {},
-        critical_props = {
-            "Name","Archivable","Source","Disabled","RunContext","Texture","TextureId","TextureID",
-            "Image","MeshId","SoundId","AnimationId","ShirtTemplate","PantsTemplate","Graphic","Decal",
-            "Size","CFrame","Anchored","CanCollide","CanTouch","Transparency","Reflectance","Material",
-            "Color","BrickColor","Value","Text","FontFace","BackgroundColor3","BackgroundTransparency",
-            "Visible","ZIndex","Ambient","Brightness","ClockTime","Part0","Part1","C0","C1",
-            "Attachment0","Attachment1","SmoothGrid","MaterialColors","ChildData","PhysicsData","PhysicalConfigData"
-        },
-        binary_props = {"SmoothGrid","ChildData","PhysicsData","PhysicalConfigData","MaterialColors"},
-        real_content_props = {"Texture","TextureId","TextureID","Image","MeshId","SoundId","AnimationId","Decal","ShirtTemplate","PantsTemplate","Graphic"},
-        content_prop_exact = {},
-        core_script_names = {},
-        character_classes = {"Humanoid","Head","Torso","HumanoidRootPart","UpperTorso","LowerTorso"},
-        skip_svc = {"CoreGui","CorePackages","CoreScripts","Chat","LogService"},
-        skip_prop = {"Parent","RobloxLocked","HistoryId","ClassName","AttributesSerialize","Tags"},
-        attr_type_ids = {string=0x02,boolean=0x03,number=0x04,UDim=0x0D,UDim2=0x10,Vector2=0x12,Vector3=0x13,CFrame=0x10,Color3=0x1A,BrickColor=0x1E,NumberRange=0x1F,NumberSequence=0x20,ColorSequence=0x21,Rect=0x22,Font=0x1C},
-        ser_types = {},
-    },
-    templates = {
-        server_script_placeholder = "-- Serverscripts are almost IMPOSSIBLE to save without additional requirements in every serverscript",
-        readme = "",
-    },
-}
-
 local function toSet(arr)
     local s = {}
     if type(arr) == "table" then
@@ -434,72 +229,34 @@ local function toSet(arr)
     return s
 end
 
+local CRITICAL_PROPS = {
+    "Name","Archivable","Source","Disabled","RunContext","Texture","TextureId","TextureID",
+    "Image","MeshId","SoundId","AnimationId","ShirtTemplate","PantsTemplate","Graphic",
+    "Size","CFrame","Anchored","CanCollide","CanTouch","Transparency","Reflectance","Material",
+    "Color","BrickColor","Value","Text","FontFace","BackgroundColor3","BackgroundTransparency",
+    "Visible","ZIndex","Ambient","Brightness","ClockTime","Part0","Part1","C0","C1",
+    "Attachment0","Attachment1","SmoothGrid","MaterialColors","ChildData","PhysicsData","PhysicalConfigData",
+}
+local CRITICAL_PROPS_SET = toSet(CRITICAL_PROPS)
+local SKIP_SVC = toSet({"CoreGui","CorePackages","CoreScripts","Chat","LogService"})
+local SKIP_PROP = toSet({"Parent","RobloxLocked","HistoryId","ClassName","AttributesSerialize","Tags"})
+local BINARY_PROPS = toSet({"SmoothGrid","ChildData","ChildData2","MeshData","MeshData2","PhysicsData","PhysicalConfigData","MaterialColors"})
+local REAL_CONTENT_PROPS = toSet({"Texture","TextureId","TextureID","Image","MeshId","SoundId","AnimationId","ShirtTemplate","PantsTemplate","Graphic","AssetId"})
+local CHARACTER_CLASSES = toSet({"Humanoid","Head","Torso","HumanoidRootPart","UpperTorso","LowerTorso"})
+local CONTENT_PROP_EXACT = {}
+local CORE_SCRIPT_NAMES = {}
+local INSTANCE_SPECIFIC = {}
+local ATTR_TYPE_IDS = { string=0x02, boolean=0x03, number=0x04 }
+
+
+
 local function shouldSkipProp(name)
     if SKIP_PROP[name] then return true end
     if CONTENT_PROP_EXACT[name] then return true end
     return false
 end
 
-local function applyData(d)
-    local t = d.tables or d
-    if type(t.instance_specific) == "table" then INSTANCE_SPECIFIC = t.instance_specific end
-    if type(t.critical_props) == "table" then
-        CRITICAL_PROPS = t.critical_props
-        CRITICAL_PROPS_SET = toSet(t.critical_props)
-    end
-    if type(t.binary_props) == "table" then BINARY_PROPS = toSet(t.binary_props) end
-    if type(t.real_content_props) == "table" then REAL_CONTENT_PROPS = toSet(t.real_content_props) end
-    if type(t.content_prop_exact) == "table" then CONTENT_PROP_EXACT = toSet(t.content_prop_exact) end
-    if type(t.core_script_names) == "table" then CORE_SCRIPT_NAMES = toSet(t.core_script_names) end
-    if type(t.character_classes) == "table" then CHARACTER_CLASSES = toSet(t.character_classes) end
-    if type(t.skip_svc) == "table" then SKIP_SVC = toSet(t.skip_svc) end
-    if type(t.skip_prop) == "table" then SKIP_PROP = toSet(t.skip_prop) end
-    if type(t.attr_type_ids) == "table" then ATTR_TYPE_IDS = t.attr_type_ids end
-    if type(t.ser_types) == "table" then DATA.ser_types = t.ser_types end
 
-    local tmpl = d.templates or d
-    if type(tmpl.server_script_placeholder) == "string" and tmpl.server_script_placeholder ~= "" then
-        DATA.server_script_placeholder = tmpl.server_script_placeholder
-    end
-    if type(tmpl.readme) == "string" and tmpl.readme ~= "" then
-        DATA.readme_template = tmpl.readme
-    end
-
-    if type(d.decompiler) == "table" then
-        DATA.decompiler = d.decompiler
-    end
-
-    if type(d.options) == "table" then
-        for k, v in pairs(d.options) do
-            if Fish.Options[k] == nil then Fish.Options[k] = v end
-        end
-    end
-
-    if d.meta and type(d.meta.version) == "string" then
-        DATA.version = d.meta.version
-    end
-end
-
-local function loadFromAPI()
-    if _dataLoaded then return _dataLoaded end
-    local ok, html = pcall(function() return game:HttpGet(Fish.Options.DataAPIURL) end)
-    if ok and type(html) == "string" and #html > 0 then
-        local blob = html:match('<script[^>]*id="fish%-data"[^>]*>(.-)</script>')
-        if blob then
-            local okD, decoded = pcall(HttpService.JSONDecode, HttpService, blob)
-            if okD and type(decoded) == "table" then
-                applyData(decoded)
-                _dataLoaded = true
-                log("Data API loaded v" .. tostring(DATA.version or "?"))
-                return true
-            end
-        end
-    end
-    log("Data API unreachable")
-    applyData(FALLBACK)
-    _dataLoaded = true
-    return false
-end
 
 local apiClassProps = {}
 
@@ -584,139 +341,46 @@ local function isPropValid(cls, propName)
     return apiSet[propName] == true
 end
 
-local function httpPost(url, body, headers)
-    local g = (getgenv and getgenv()) or _G or {}
-    local sent = {}
-
-    local function tryCall(fn)
-        if type(fn) ~= "function" or sent[fn] then return nil end
-        sent[fn] = true
-        local ok, res = pcall(fn, { Url = url, Method = "POST", Body = body, Headers = headers or {} })
-        if not ok or res == nil then return nil end
-        if type(res) == "string" then return { status = 200, body = res } end
-        if type(res) ~= "table" then return nil end
-        local st = res.StatusCode or res.status or res.Status
-        local bd = res.Body or res.body or res.Response or res.Data
-        if type(bd) == "table" then
-            local okE, e = pcall(HttpService.JSONEncode, HttpService, bd)
-            if okE then bd = e end
-        end
-        if type(bd) == "string" then return { status = st, body = bd } end
-        return nil
-    end
-
-    local r = tryCall(g.request) if r then return r end
-    if type(g.http) == "table" then r = tryCall(g.http.request) if r then return r end end
-    if type(g.Http) == "table" then r = tryCall(g.Http.request) if r then return r end end
-    if type(g.HTTP) == "table" then r = tryCall(g.HTTP.request) if r then return r end end
-    r = tryCall(g.http_request) if r then return r end
-
-    for _, v in pairs(g) do
-        if type(v) == "table" then
-            local rf = v.request or v.http_request or v.Request
-            r = tryCall(rf)
-            if r then return r end
-        end
-    end
-
-    local ok, res = pcall(HttpService.RequestAsync, HttpService, {
-        Url = url,
-        Method = "POST",
-        Body = body,
-        Headers = headers or {}
-    })
-    if ok and res then
-        return { status = res.StatusCode, body = res.Body }
-    end
-
-    return nil
-end
-
 local b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+
+local b64pairs = {}
+for i = 0, 63 do b64pairs[i] = b64chars:sub(i + 1, i + 1) end
 
 local function b64(s)
     if type(s) ~= "string" then return "" end
     local res = {}
-    local i = 1
+    local n = 0
     local len = #s
-    while i <= len do
-        local c1 = s:byte(i)
-        local c2 = s:byte(i + 1)
-        local c3 = s:byte(i + 2)
-        local b1 = math.floor(c1 / 4)
-        local b2 = (c1 % 4) * 16 + (c2 and math.floor(c2 / 16) or 0)
-        local b3 = c2 and ((c2 % 16) * 4 + (c3 and math.floor(c3 / 64) or 0)) or 0
-        local b4 = c3 and (c3 % 64) or 0
-        table.insert(res, b64chars:sub(b1 + 1, b1 + 1))
-        table.insert(res, b64chars:sub(b2 + 1, b2 + 1))
-        table.insert(res, c2 and b64chars:sub(b3 + 1, b3 + 1) or "=")
-        table.insert(res, c3 and b64chars:sub(b4 + 1, b4 + 1) or "=")
-        i = i + 3
+    local byte = string.byte
+    for i = 1, len - 2, 3 do
+        local a, b, c = byte(s, i, i + 2)
+        local v = a * 65536 + b * 256 + c
+        n = n + 1
+        res[n] = b64pairs[v // 262144] .. b64pairs[(v // 4096) % 64] .. b64pairs[(v // 64) % 64] .. b64pairs[v % 64]
+    end
+    local rem = len % 3
+    if rem == 1 then
+        local a = byte(s, len)
+        n = n + 1
+        res[n] = b64pairs[a // 4] .. b64pairs[(a % 4) * 16] .. "=="
+    elseif rem == 2 then
+        local a, b = byte(s, len - 1, len)
+        local v = a * 256 + b
+        n = n + 1
+        res[n] = b64pairs[v // 1024] .. b64pairs[(v // 16) % 64] .. b64pairs[(v % 16) * 4] .. "="
     end
     return table.concat(res)
 end
 
-local function lunauxDecompile(inst)
-    local bytecodeFn = resolveBytecode()
-    local execDec = resolveDecompile()
-    
-    if not bytecodeFn then
-        if execDec then
-            local ok, res = pcall(execDec, inst)
-            if ok and type(res) == "string" and res ~= "" then return res end
-        end
-        return nil
-    end
-    
-    local ok, bytecode = pcall(bytecodeFn, inst)
-    if not ok or type(bytecode) ~= "string" or #bytecode == 0 then
-        if execDec then
-            local ok2, res2 = pcall(execDec, inst)
-            if ok2 and type(res2) == "string" and res2 ~= "" then return res2 end
-        end
-        return nil
-    end
-
-
-    --16/10/26
-    --ok so looks like lunaux didnt work afterall so i guess im just gonna have to scrap this and use lua.expert :(
-    local dc = DATA.decompiler or {}
-    local url = dc.url or Fish.Options.LunaUXURL
-    local headers = dc.headers or { ["Content-Type"] = "application/json" }
-    local reqOpts = (dc.body and dc.body.options) or {
-        transformCompoundAssignments = true,
-        virtualizeContinues = true,
-        showFunctionInfo = true,
-        upvalueComments = true,
-    }
-    local responseKeys = dc.responseKeys or { "source", "decompiled", "result", "code", "output" }
-
-    local payload = HttpService:JSONEncode({ script = b64(bytecode), options = reqOpts })
-    local res = httpPost(url, payload, headers)
-    
-    if res and res.body then
-        local okD, data = pcall(HttpService.JSONDecode, HttpService, res.body)
-        if okD and type(data) == "table" then
-            for _, k in ipairs(responseKeys) do
-                if type(data[k]) == "string" and #data[k] > 0 then return data[k] end
-            end
-        elseif res.status and tonumber(res.status) and tonumber(res.status) >= 200 and tonumber(res.status) < 300 then
-            if type(res.body) == "string" and #res.body > 0 and res.body:sub(1, 1) ~= "<" then
-                return res.body
-            end
-        end
-    end
-    
-    if execDec then
-        local ok3, res3 = pcall(execDec, inst)
-        if ok3 and type(res3) == "string" and res3 ~= "" then return res3 end
-    end
-    
+local function decompileScript(inst)
+    if not IO.decompile then return nil end
+    local ok, res = pcall(IO.decompile, inst)
+    if ok and type(res) == "string" and res ~= "" then return res end
     return nil
 end
 
 function Fish.FetchClasses(cacheFile)
-    cacheFile = cacheFile or "FishilizerAPIDump.json"
+    cacheFile = cacheFile or "LXSerializerAPIDump.json"
     if IO.isfile and IO.readfile then
         local okI, exists = pcall(IO.isfile, cacheFile)
         if okI and exists then
@@ -768,31 +432,26 @@ function Fish.ApplyAPIDump(data)
 end
 
 local _statusAccum = 0
-local _lastConsolePct = -1
+local _lastYield = os.clock()
+local _lastStatus = 0
 
-local function setStatusText(text, color)
-    if Fish.Options.LogToFile then
-        _logCache[#_logCache + 1] = "[" .. os.date("!%H:%M:%S") .. "] " .. tostring(text)
-        if #_logCache >= 32 then flushLog() end
+local function breathe()
+    if os.clock() - _lastYield >= 0.2 then
+        task.wait()
+        _lastYield = os.clock()
     end
 end
 
 local function bumpStatus(prefix, current, total)
     _statusAccum = _statusAccum + 1
+    breathe()
+    if os.clock() - _lastStatus < 0.25 then return end
+    _lastStatus = os.clock()
     local pct = 0
     if total and total > 0 then
-        pct = math.floor((current / total) * 100)
-        if pct > 100 then pct = 100 end
+        pct = math.min(100, math.floor((current / total) * 100))
     end
-    if _statusAccum % 25 ~= 0 then return end
-    
-    setStatusText(prefix .. " " .. current .. "/" .. total .. " (" .. pct .. "%)")
-    
-    if pct ~= _lastConsolePct then
-        _lastConsolePct = pct
-        ConWrite("[LX Serializer] " .. prefix .. " " .. current .. "/" .. total .. " (" .. pct .. "%)")
-    end
-    task.wait()
+    setStatusText(prefix .. " " .. current .. "/" .. tostring(total) .. " (" .. pct .. "%)")
 end
 
 local function u32(n) return string.pack("<I4", n) end
@@ -1045,6 +704,23 @@ local function getDefault(className)
     return inst
 end
 
+local function indexProp(inst, name) return inst[name] end
+
+local defaultValues = {}
+local NOVALUE = {}
+local function defaultValue(cls, defaultInst, k)
+    local vals = defaultValues[cls]
+    if not vals then vals = {} defaultValues[cls] = vals end
+    local dv = vals[k]
+    if dv == nil then
+        local ok, got = pcall(indexProp, defaultInst, k)
+        dv = (ok and got ~= nil) and got or NOVALUE
+        vals[k] = dv
+    end
+    if dv == NOVALUE then return nil end
+    return dv
+end
+
 local function valuesEqual(a, b)
     if a == b then return true end
     local ta, tb = typeof(a), typeof(b)
@@ -1074,11 +750,6 @@ local function isCharacter(inst, opts, charRefs)
     if not inst then return false end
     if charRefs[inst] then return true end
     if not inst:IsA("Model") then
-        local okp, charModel = pcall(function() return inst:FindFirstAncestorWhichIsA("Model") end)
-        if okp and charModel and charRefs[charModel] then
-            charRefs[inst] = true
-            return true
-        end
         if CHARACTER_CLASSES[inst.ClassName] then
             local okp2, parent = pcall(function() return inst.Parent end)
             if okp2 and parent and parent:IsA("Model") and modelIsCharacter(parent) then
@@ -1105,28 +776,11 @@ local function nameIsCore(inst, opts, coreRefs)
     return false
 end
 
-local function ancestorIsCore(inst, opts, coreRefs)
-    if not opts.StripCoreScripts then return false end
-    local okA, ancestor = pcall(function()
-        return inst:FindFirstAncestorOfClass("PlayerScripts")
-            or inst:FindFirstAncestorOfClass("PlayerGui")
-            or inst:FindFirstAncestorOfClass("StarterPlayer")
-    end)
-    if okA and ancestor then return true end
-    local cur = inst.Parent
-    for _ = 1, 30 do
-        if not cur then return false end
-        if coreRefs[cur] then return true end
-        if cur == Players or cur == game then return false end
-        cur = cur.Parent
-    end
-    return false
-end
+local CORE_CONTAINERS = { PlayerScripts = true, PlayerGui = true, StarterPlayer = true }
 
 local function keepInst(inst, opts, charRefs, coreRefs)
     if isCharacter(inst, opts, charRefs) then return false end
     if nameIsCore(inst, opts, coreRefs) then return false end
-    if ancestorIsCore(inst, opts, coreRefs) then return false end
     if inst:IsA("Lighting") then return true end
     if opts.IgnoreNotArchivable then
         local ok, ar = pcall(function() return inst.Archivable end)
@@ -1139,110 +793,52 @@ local function keepInst(inst, opts, charRefs, coreRefs)
     return true
 end
 
+local function canKeep(inst, opts, charRefs, coreRefs)
+    local ok, keep = pcall(keepInst, inst, opts, charRefs, coreRefs)
+    return ok and keep == true
+end
+
 local function walkRef(root, d, opts, refs, charRefs, coreRefs)
     if d > opts.Depth then return end
     if refs[root] then return end
     Walker.refCount = Walker.refCount + 1
     refs[root] = "RBX" .. Walker.refCount
-    if Walker.refCount % 500 == 0 then
+    if Walker.refCount % 2000 == 0 then
         setStatusText("Saving game.. scanning " .. Walker.refCount)
-        ConWrite("[LX Serializer] scanning " .. Walker.refCount .. " refs")
-        task.wait()
     end
-    local ok, kids = pcall(function() return root:GetChildren() end)
+    breathe()
+    if opts.StripCoreScripts and CORE_CONTAINERS[root.ClassName] then return end
+    local ok, kids = pcall(root.GetChildren, root)
     if not ok or not kids then return end
     for _, c in ipairs(kids) do
-        if keepInst(c, opts, charRefs, coreRefs) then walkRef(c, d + 1, opts, refs, charRefs, coreRefs) end
+        if canKeep(c, opts, charRefs, coreRefs) then walkRef(c, d + 1, opts, refs, charRefs, coreRefs) end
     end
 end
+
+local readMode = {}
 
 local function readProp(inst, name)
-    local ok, v = pcall(function() return inst[name] end)
-    if ok and v ~= nil then return v end
+    local cls = inst.ClassName
+    local modes = readMode[cls]
+    if not modes then modes = {} readMode[cls] = modes end
+    local mode = modes[name]
+    if mode == 0 then return nil end
+    if mode ~= 2 then
+        local ok, v = pcall(indexProp, inst, name)
+        if ok then
+            modes[name] = 1
+            return v
+        end
+    end
+    if IO.gethiddenproperty then
+        local okH, hv = pcall(IO.gethiddenproperty, inst, name)
+        if okH then
+            modes[name] = 2
+            return hv
+        end
+    end
+    modes[name] = 0
     return nil
-end
-
-
--- Terrain doesn't save if your executor has low UNC but atleast it tries
-local function readTerrainVoxels(terrain, res)
-    if not terrain then return nil end
-    res = res or Fish.Options.TerrainResolution or 8
-    local ok_size, size = pcall(function() return terrain.Size end)
-    if not ok_size or not size then return nil end
-    local cap = Fish.Options.TerrainCellCap or 4194304
-    local adjRes = res
-    local cellsX, cellsY, cellsZ
-    while true do
-        cellsX = math.max(1, math.floor(size.X / adjRes + 0.5))
-        cellsY = math.max(1, math.floor(size.Y / adjRes + 0.5))
-        cellsZ = math.max(1, math.floor(size.Z / adjRes + 0.5))
-        if cellsX * cellsY * cellsZ <= cap then break end
-        adjRes = adjRes * 2
-        if adjRes > 1024 then
-            log("Terrain too large to capture even at res 1024, skipping.")
-            return nil
-        end
-    end
-    if adjRes ~= res then
-        log("Terrain resolution auto-raised from " .. res .. " to " .. adjRes .. " to stay under cell cap.")
-        setStatusText("Saving game.. terrain downsampled to res " .. adjRes)
-        task.wait()
-    end
-    local half = size * 0.5
-    local CHUNK = 32
-    local out = {}
-    out[#out+1] = string.pack("<I4", 4)
-    out[#out+1] = string.pack("<I4", 0)
-    out[#out+1] = string.pack("<I4", cellsX)
-    out[#out+1] = string.pack("<I4", cellsY)
-    out[#out+1] = string.pack("<I4", cellsZ)
-    local matParts = {}
-    local occParts = {}
-    local chunkIdx = 0
-    for cx = 0, cellsX - 1, CHUNK do
-        for cy = 0, cellsY - 1, CHUNK do
-            for cz = 0, cellsZ - 1, CHUNK do
-                local ex = math.min(cx + CHUNK, cellsX)
-                local ey = math.min(cy + CHUNK, cellsY)
-                local ez = math.min(cz + CHUNK, cellsZ)
-                local minV = Vector3.new(-half.X + cx * adjRes, -half.Y + cy * adjRes, -half.Z + cz * adjRes)
-                local maxV = Vector3.new(-half.X + ex * adjRes, -half.Y + ey * adjRes, -half.Z + ez * adjRes)
-                local region = Region3.new(minV, maxV)
-                local ok, m, o = pcall(function()
-                    return terrain:ReadVoxels(region, adjRes)
-                end)
-                if ok and m and o then
-                    for x = 1, #m do
-                        local mx = m[x]
-                        local ox = o[x]
-                        local xm = {}
-                        local xo = {}
-                        for y = 1, #mx do
-                            local mxy = mx[y]
-                            local oxy = ox[y]
-                            for z = 1, #mxy do
-                                local mv = mxy[z]
-                                local ov = oxy[z]
-                                xm[#xm+1] = string.char(mv.Value)
-                                xo[#xo+1] = string.char(math.floor(ov * 255 + 0.5))
-                            end
-                        end
-                        matParts[#matParts+1] = table.concat(xm)
-                        occParts[#occParts+1] = table.concat(xo)
-                    end
-                end
-                chunkIdx = chunkIdx + 1
-                if chunkIdx % 8 == 0 then
-                    setStatusText("Saving game.. terrain chunk " .. chunkIdx)
-                    ConWrite("[LX Serializer] terrain chunk " .. chunkIdx)
-                    task.wait()
-                end
-            end
-        end
-    end
-    out[#out+1] = table.concat(matParts)
-    out[#out+1] = table.concat(occParts)
-    return table.concat(out)
 end
 
 local function emitContentProp(buf, inst, pad, propName)
@@ -1255,7 +851,7 @@ end
 
 local function emitSingleProp(buf, inst, pad, seen, k, opts, defaultInst)
     if seen[k] or shouldSkipProp(k) then return end
-    if Fish.Options.APIProperties and not isPropValid(inst.ClassName, k) then return end
+    if opts.APIProperties and not isPropValid(inst.ClassName, k) then return end
     if isRealContent(k) then
         seen[k] = true
         emitContentProp(buf, inst, pad, k)
@@ -1265,8 +861,8 @@ local function emitSingleProp(buf, inst, pad, seen, k, opts, defaultInst)
             seen[k] = true
             local skip = false
             if defaultInst then
-                local okd, dv = pcall(function() return defaultInst[k] end)
-                if okd and dv ~= nil then
+                local dv = defaultValue(inst.ClassName, defaultInst, k)
+                if dv ~= nil then
                     local ok1, eq = pcall(valuesEqual, v, dv)
                     if ok1 and eq then skip = true end
                 end
@@ -1285,6 +881,12 @@ local function emitPropsFromList(buf, inst, pad, seen, list, opts)
     for _, k in ipairs(list) do
         emitSingleProp(buf, inst, pad, seen, k, opts, defaultInst)
     end
+end
+
+local function encodeTags(inst)
+    local tags = CollectionService:GetTags(inst)
+    if type(tags) ~= "table" or #tags == 0 then return nil end
+    return table.concat(tags, "\0")
 end
 
 local function emitAttributesAndTags(buf, inst, pad, opts)
@@ -1314,34 +916,65 @@ local function shouldEmitInMode(cls, mode)
     return true
 end
 
-local function emitInst(buf, inst, d, opts, decompileCache, refs, totalRefs)
-    local ref = refs[inst]
-    if not ref then return end
-    local pad = string.rep("  ", d)
-    local cls = inst.ClassName
+local emitInst
 
-    if not shouldEmitInMode(cls, opts.Mode) then
-        local okc, kids = pcall(function() return inst:GetChildren() end)
-        if okc and kids then for _, c in ipairs(kids) do if refs[c] then emitInst(buf, c, d, opts, decompileCache, refs, totalRefs) end end end
-        return
+local GEOMETRY_PROPS = {
+    UnionOperation = {"AssetId", "InitialSize", "ChildData", "ChildData2", "MeshData", "MeshData2", "PhysicsData", "PhysicalConfigData", "FormFactor", "UsePartColor", "RenderFidelity", "CollisionFidelity", "SmoothingAngle"},
+    MeshPart = {"MeshId", "InitialSize", "PhysicsData", "PhysicalConfigData", "RenderFidelity", "CollisionFidelity", "HasJointOffset", "HasSkinnedMesh", "JointOffset"},
+}
+
+local emitInst
+
+local propPlans = {}
+local decompiledByBytecode = {}
+local function propPlan(inst, cls, opts)
+    local plan = propPlans[cls]
+    if plan then return plan end
+    plan = {}
+    local added = {}
+    local function add(list, useDefault)
+        if not list then return end
+        for _, k in ipairs(list) do
+            if not added[k] and not shouldSkipProp(k) and (not opts.APIProperties or isPropValid(cls, k)) then
+                added[k] = true
+                plan[#plan + 1] = { k, useDefault, isRealContent(k) }
+            end
+        end
     end
+    add(INSTANCE_SPECIFIC[cls], true)
+    add(CRITICAL_PROPS, true)
+    add(propsViaGetProperties(inst), false)
+    propPlans[cls] = plan
+    return plan
+end
 
-    Walker.totalInst = Walker.totalInst + 1
-    bumpStatus("Saving", Walker.totalInst, totalRefs)
-
-    table.insert(buf, pad .. '<Item class="' .. clean(cls) .. '" referent="' .. ref .. '">')
-    table.insert(buf, pad .. '  <Properties>')
-
+local function emitProps(own, inst, cls, pad, opts, decompileCache)
     local seen = {}
-    local specific = INSTANCE_SPECIFIC[cls]
-    if specific then emitPropsFromList(buf, inst, pad, seen, specific, opts) end
-
-    emitPropsFromList(buf, inst, pad, seen, CRITICAL_PROPS, opts)
-
-    local dynProps = propsViaGetProperties(inst)
-    if dynProps then
-        for _, k in ipairs(dynProps) do
-            emitSingleProp(buf, inst, pad, seen, k, opts, nil)
+    local defaultInst = opts.IgnoreDefaultProps and getDefault(cls) or nil
+    local plan = propPlan(inst, cls, opts)
+    for i = 1, #plan do
+        local entry = plan[i]
+        local k = entry[1]
+        if entry[3] then
+            seen[k] = true
+            emitContentProp(own, inst, pad, k)
+        else
+            local v = readProp(inst, k)
+            if v ~= nil then
+                seen[k] = true
+                local same = false
+                if entry[2] and defaultInst then
+                    local dv = defaultValue(cls, defaultInst, k)
+                    if dv ~= nil then
+                        local ok1, eq = pcall(valuesEqual, v, dv)
+                        same = ok1 and eq == true
+                    end
+                end
+                if not same then
+                    local str = serializeProp(k, v)
+                    if str then own[#own + 1] = pad .. '    ' .. str end
+                end
+            end
         end
     end
 
@@ -1352,64 +985,119 @@ local function emitInst(buf, inst, d, opts, decompileCache, refs, totalRefs)
                 local ok, p = pcall(function() return Players:GetPlayerFromCharacter(inst) end)
                 if ok and p then name = "Player_" .. tostring(p.UserId) end
             end
-            table.insert(buf, pad .. '    <string name="Name">' .. clean(name) .. '</string>')
+            table.insert(own, pad .. '    <string name="Name">' .. clean(name) .. '</string>')
         end
     end
 
-    emitAttributesAndTags(buf, inst, pad, opts)
+    emitAttributesAndTags(own, inst, pad, opts)
 
     if cls == "Script" then
         local src = tostring(DATA.server_script_placeholder or "")
-        table.insert(buf, pad .. '    <ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>')
+        table.insert(own, pad .. '    <ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>')
     elseif cls == "LocalScript" or cls == "ModuleScript" then
         local src = readProp(inst, "Source")
         if decompileCache and decompileCache[inst] then src = decompileCache[inst] end
         if (not src or src == "") and opts.Decompile and opts._decompileFn then
-            local okd, decoded = pcall(opts._decompileFn, inst)
-            if okd and type(decoded) == "string" and decoded ~= "" then src = decoded end
+            local key
+            if opts._bytecodeFn then
+                local okb, bc = pcall(opts._bytecodeFn, inst)
+                if okb and type(bc) == "string" and bc ~= "" then key = bc end
+            end
+            local cached = key and decompiledByBytecode[key]
+            if cached then
+                src = cached
+            else
+                local okd, decoded = pcall(opts._decompileFn, inst)
+                if okd and type(decoded) == "string" and decoded ~= "" then
+                    src = decoded
+                    if key then decompiledByBytecode[key] = decoded end
+                end
+            end
         end
         if (not src or src == "") and opts.SaveBytecode and opts._bytecodeFn then
             local okb, bc = pcall(opts._bytecodeFn, inst)
             if okb and type(bc) == "string" and bc ~= "" then src = b64(bc) end
         end
         if not src or src == "" then
-            src = "-- [LX Serializer] No source recovered for " .. tostring(cls) .. " \"" .. tostring(inst.Name) .. "\""
+            src = "-- [LX Serializer] No source recovered for " .. tostring(cls) .. " \"" .. tostring(readProp(inst, "Name")) .. "\""
         end
-        table.insert(buf, pad .. '    <ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>')
+        table.insert(own, pad .. '    <ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>')
     end
 
-    if cls == "UnionOperation" or cls == "IntersectOperation" or cls == "NegateOperation" or cls == "PartOperation" then
-        for _, bp in ipairs({"ChildData", "PhysicsData", "PhysicalConfigData"}) do
+    if cls == "UnionOperation" or cls == "IntersectOperation" or cls == "NegateOperation" or cls == "PartOperation" or cls == "MeshPart" then
+        for _, bp in ipairs(GEOMETRY_PROPS[cls] or GEOMETRY_PROPS.UnionOperation) do
             if not seen[bp] then
                 local raw = readProp(inst, bp)
-                if raw and type(raw) == "string" then
-                    table.insert(buf, pad .. '    <BinaryString name="' .. bp .. '">' .. b64(raw) .. '</BinaryString>')
+                if type(raw) == "string" and #raw > 0 then
+                    if bp == "AssetId" then
+                        local uri = extractUri(raw)
+                        if uri then table.insert(own, pad .. '    ' .. serContentTag(bp, uri)) end
+                    else
+                        table.insert(own, pad .. '    <BinaryString name="' .. bp .. '">' .. b64(raw) .. '</BinaryString>')
+                    end
+                    seen[bp] = true
+                elseif raw ~= nil then
+                    local str = (bp == "AssetId") and extractUri(raw) and serContentTag(bp, extractUri(raw)) or serializeProp(bp, raw)
+                    if str then
+                        table.insert(own, pad .. '    ' .. str)
+                        seen[bp] = true
+                    end
                 end
             end
         end
     end
 
-    if cls == "Terrain" then
-        if not seen.SmoothGrid then
-            local sg = readTerrainVoxels(inst, opts.TerrainResolution)
-            if sg and #sg > 0 then
-                table.insert(buf, pad .. '    <BinaryString name="SmoothGrid">' .. b64(sg) .. '</BinaryString>')
-            else
-                log("Terrain voxel capture returned nothing.")
+    -- Terrain doesn't save if your executor has low UNC but atleast it tries
+    if cls == "Terrain" and IO.gethiddenproperty then
+        for _, bp in ipairs({"SmoothGrid", "MaterialColors"}) do
+            if not seen[bp] then
+                local ok, raw = pcall(IO.gethiddenproperty, inst, bp)
+                if ok and type(raw) == "string" and #raw > 0 then
+                    table.insert(own, pad .. '    <BinaryString name="' .. bp .. '">' .. b64(raw) .. '</BinaryString>')
+                end
             end
-        end
-        local mc = readProp(inst, "MaterialColors")
-        if mc and type(mc) == "string" and #mc > 0 and not seen.MaterialColors then
-            table.insert(buf, pad .. '    <BinaryString name="MaterialColors">' .. b64(mc) .. '</BinaryString>')
         end
     end
 
-    table.insert(buf, pad .. '  </Properties>')
+end
 
-    local okc, kids = pcall(function() return inst:GetChildren() end)
+emitInst = function(buf, inst, d, opts, decompileCache, refs, totalRefs)
+    local ref = refs[inst]
+    if not ref then return end
+    local cls = inst.ClassName
+
+    if not shouldEmitInMode(cls, opts.Mode) then
+        local okc, kids = pcall(inst.GetChildren, inst)
+        if okc and kids then for _, c in ipairs(kids) do if refs[c] then emitInst(buf, c, d, opts, decompileCache, refs, totalRefs) end end end
+        return
+    end
+
+    Walker.totalInst = Walker.totalInst + 1
+    bumpStatus("Saving", Walker.totalInst, totalRefs)
+
+    local pad = string.rep("  ", d)
+    local own = {}
+    local ok, err = pcall(emitProps, own, inst, cls, pad, opts, decompileCache)
+    if not ok then
+        log("Skipped " .. tostring(ref) .. " (" .. tostring(cls) .. "): " .. tostring(err))
+        return
+    end
+
+    buf[#buf + 1] = pad .. '<Item class="' .. clean(cls) .. '" referent="' .. ref .. '">'
+    buf[#buf + 1] = pad .. '  <Properties>'
+    for i = 1, #own do buf[#buf + 1] = own[i] end
+    buf[#buf + 1] = pad .. '  </Properties>'
+
+    local okc, kids = pcall(inst.GetChildren, inst)
     if okc and kids then for _, c in ipairs(kids) do if refs[c] then emitInst(buf, c, d + 1, opts, decompileCache, refs, totalRefs) end end end
 
-    table.insert(buf, pad .. '</Item>')
+    buf[#buf + 1] = pad .. '</Item>'
+
+    local sink = opts._sink
+    if sink and #buf >= 16384 then
+        sink:write(table.concat(buf, "\n") .. "\n")
+        table.clear(buf)
+    end
 end
 
 local function placeName()
@@ -1431,23 +1119,18 @@ end
 local function buildReadmeSource()
     local tpl = DATA.readme_template
     if type(tpl) ~= "string" or tpl == "" then
-        tpl = "-- LX Serializer v" .. Fish.VERSION .. "\nGame saved with LX Serializer\n"
+        tpl = "-- LX Serializer\nGame saved with LX Serializer\n"
     end
     local subs = {
-        VERSION = Fish.VERSION,
         PLACE_NAME = placeName(),
         PLACE_ID = tostring(game.PlaceId),
         JOB_ID = tostring(game.JobId or "N/A"),
         MODE = tostring(Fish.Options.Mode),
         DECOMPILE = tostring(Fish.Options.Decompile),
-        TERRAIN_RESOLUTION = tostring(Fish.Options.TerrainResolution),
         DEPTH = tostring(Fish.Options.Depth),
         TIMESTAMP = os.date("!%Y-%m-%d %H:%M:%S"),
     }
     local out = tpl:gsub("{{(%w+)}}", function(k) return subs[k] or "" end)
-    if out:sub(1, 11) ~= "--[[\n __ " then
-        out = "--[[\n" .. Fish.Banner .. "]]\n\n" .. out
-    end
     return out
 end
 
@@ -1531,13 +1214,23 @@ Sink.__index = Sink
 function Sink.new(path, chunk)
     local s = setmetatable({}, Sink)
     s.path = path
-    s.part = path .. ".part"
     s.chunk = chunk or 262144
     s.buf = {}
     s.size = 0
     s.total = 0
-    s.streaming = (IO.appendfile ~= nil and IO.writefile ~= nil)
+    s.failed = not pcall(IO.writefile, path, "")
     return s
+end
+
+function Sink:flush()
+    if #self.buf == 0 or self.failed then return end
+    local blob = table.concat(self.buf)
+    table.clear(self.buf)
+    self.size = 0
+    if not pcall(IO.appendfile, self.path, blob) then
+        self.failed = true
+        log("Append failed on " .. self.path)
+    end
 end
 
 function Sink:write(str)
@@ -1545,56 +1238,19 @@ function Sink:write(str)
     self.buf[#self.buf + 1] = str
     self.size = self.size + #str
     self.total = self.total + #str
-    if self.streaming and self.size >= self.chunk then
-        local blob = table.concat(self.buf)
-        pcall(IO.appendfile, self.part, blob)
-        self.buf = {}
-        self.size = 0
-        ConWrite("[LX Serializer] wrote " .. tostring(self.total) .. "b")
-    end
+    if self.size >= self.chunk then self:flush() end
 end
 
-function Sink:finish(finalPath)
-    if #self.buf > 0 then
-        local blob = table.concat(self.buf)
-        self.buf = {}
-        self.size = 0
-        if self.streaming then
-            pcall(IO.appendfile, self.part, blob)
-        else
-            self.streaming = false
-            self.cached = (self.cached or "") .. blob
-        end
-    end
-    if self.streaming then
-        local okR, whole = pcall(IO.readfile, self.part)
-        if okR and type(whole) == "string" then
-            if IO.writefile then
-                local okW = pcall(IO.writefile, finalPath, whole)
-                if okW and IO.delfile then pcall(IO.delfile, self.part) end
-                if okW then
-                    log("Streamed to file: " .. finalPath .. " (" .. #whole .. " bytes)")
-                    return true
-                end
-            end
-        end
-        log("Stream finish failed, kept .part at " .. self.part)
-        return false
-    end
-    if IO.writefile and self.cached then
-        local okW = pcall(IO.writefile, finalPath, self.cached)
-        if okW then
-            log("Wrote: " .. finalPath .. " (" .. #self.cached .. " bytes)")
-            return true
-        end
-    end
-    return false
+function Sink:finish()
+    self:flush()
+    if self.failed then return false end
+    log("Streamed to file: " .. self.path .. " (" .. self.total .. " bytes)")
+    return true
 end
 
 function Fish.Init()
-    loadFromAPI()
-    Fish._decompileFn = lunauxDecompile
-    Fish._bytecodeFn = resolveBytecode()
+    Fish._decompileFn = IO.decompile and decompileScript or nil
+    Fish._bytecodeFn = IO.getscriptbytecode
     if Fish.Options.FetchDocs or Fish.Options.APIProperties then
         local ok, data = pcall(Fish.FetchClasses)
         if not ok then log("API dump fetch failed: " .. tostring(data)) end
@@ -1602,32 +1258,32 @@ function Fish.Init()
     if Fish.Options.UseReflectionService then
         buildReflectionProps()
     end
+    Fish._ready = true
     return Fish
 end
 
 function Fish.Save(instance, name, userOpts)
-    if not _dataLoaded then loadFromAPI() end
     local opts = mergeOptions(userOpts)
-    IO.writefile = IO.writefile or resolveIO("writefile")
-    IO.readfile = IO.readfile or resolveIO("readfile")
-    IO.makefolder = IO.makefolder or resolveIO("makefolder")
-    IO.isfolder = IO.isfolder or resolveIO("isfolder")
-    IO.isfile = IO.isfile or resolveIO("isfile")
-    IO.delfile = IO.delfile or resolveIO("delfile")
-    IO.appendfile = IO.appendfile or resolveIO("appendfile")
-    IO.getproperties = IO.getproperties or resolveIO("getproperties")
 
-    if not opts.Callback and not opts.Clipboard and not IO.writefile then
+    if not opts.Callback and not IO.writefile then
         log("writefile unavailable")
+        setStatusText("Failed: executor has no writefile")
+        Status.fade(8)
         notify("LX Serializer: FAILED", "Executor missing writefile", 10)
         return nil
     end
 
     _statusAccum = 0
-    _lastConsolePct = -1
+    _lastStatus = 0
+    table.clear(propPlans)
+    table.clear(decompiledByBytecode)
+    _lastYield = os.clock()
     ensureOutFolder()
     log("Starting save (" .. tostring(opts.Mode) .. ")")
     setStatusText("Saving game..")
+    if not IO.gethiddenproperty then log("gethiddenproperty unavailable, terrain will not be saved") end
+    if opts.Decompile and not Fish._decompileFn then log("decompile unavailable, scripts will be saved without source") end
+
 
     if opts.KillAllScripts then
         pcall(function()
@@ -1674,6 +1330,8 @@ function Fish.Save(instance, name, userOpts)
     end
 
     if #roots == 0 then
+        setStatusText("Failed: no valid root instance")
+        Status.fade(8)
         notify("LX Serializer: FAILED", "No valid root instance", 10)
         return nil
     end
@@ -1690,55 +1348,19 @@ function Fish.Save(instance, name, userOpts)
                 local ok0, kids0 = pcall(function() return game:GetChildren() end)
                 if ok0 and kids0 then
                     for _, svc in ipairs(kids0) do
-                        if keepInst(svc, opts, charRefs, coreRefs) then walkRef(svc, 1, opts, refs, charRefs, coreRefs) end
+                        if canKeep(svc, opts, charRefs, coreRefs) then walkRef(svc, 1, opts, refs, charRefs, coreRefs) end
                     end
                 end
             else
-                if keepInst(root, opts, charRefs, coreRefs) then walkRef(root, 1, opts, refs, charRefs, coreRefs) end
+                if canKeep(root, opts, charRefs, coreRefs) then walkRef(root, 1, opts, refs, charRefs, coreRefs) end
             end
         end
 
         log("Walked " .. Walker.refCount .. " instances")
-        setStatusText("Saving game.. decompiling")
-        ConWrite("[LX Serializer] Decompiling")
-        task.wait()
-
         local buf = {}
         local decompileCache = {}
 
-        if opts.Decompile and Fish._decompileFn then
-            local scriptTotal = 0
-            for inst in pairs(refs) do
-                local cls = inst.ClassName
-                if cls == "LocalScript" or cls == "ModuleScript" then
-                    local existing = readProp(inst, "Source")
-                    if not existing or existing == "" then scriptTotal = scriptTotal + 1 end
-                end
-            end
-            local scriptCount = 0
-            local iterCount = 0
-            for inst in pairs(refs) do
-                iterCount = iterCount + 1
-                local cls = inst.ClassName
-                if cls == "LocalScript" or cls == "ModuleScript" then
-                    local existing = readProp(inst, "Source")
-                    if not existing or existing == "" then
-                        scriptCount = scriptCount + 1
-                        setStatusText("Decompiling " .. scriptCount .. "/" .. scriptTotal)
-                        if scriptCount % 5 == 0 or scriptCount == scriptTotal then
-                            ConWrite("[LX Serializer] Decompiling " .. scriptCount .. "/" .. scriptTotal)
-                        end
-                        local ok, res = pcall(Fish._decompileFn, inst)
-                        if ok and type(res) == "string" and res ~= "" then decompileCache[inst] = res end
-                        task.wait()
-                    end
-                end
-                if iterCount % 100 == 0 then task.wait() end
-            end
-        end
-
         setStatusText("Saving game.. writing")
-        ConWrite("[LX Serializer] Writing")
 
         table.insert(buf, '<?xml version="1.0" encoding="utf-8"?>')
         table.insert(buf, '<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">')
@@ -1749,8 +1371,9 @@ function Fish.Save(instance, name, userOpts)
         local primaryPath = outFolder .. "/" .. fname
 
         local sink = nil
-        if opts.StreamToFile and IO.appendfile and IO.writefile then
+        if opts.StreamToFile and IO.appendfile and not opts.Callback and not opts.Clipboard then
             sink = Sink.new(primaryPath, opts.StreamChunk)
+            opts._sink = sink
             sink:write(table.concat(buf, "\n") .. "\n")
             buf = {}
         end
@@ -1800,11 +1423,12 @@ function Fish.Save(instance, name, userOpts)
         if sink then
             sink:write(table.concat(buf, "\n"))
             buf = {}
-            ConWrite("[LX Serializer] Finishing write")
-            local okFinish = sink:finish(primaryPath)
-            if okFinish then
-                xml = primaryPath
+            if not sink:finish() then
+                setStatusText("Failed: could not write " .. primaryPath)
+                Status.fade(8)
+                return nil
             end
+            xml = primaryPath
         else
             xml = table.concat(buf, "\n")
         end
@@ -1819,15 +1443,13 @@ function Fish.Save(instance, name, userOpts)
 
         if opts.Callback and type(opts.Callback) == "function" then
             pcall(opts.Callback, xml)
-            setStatusText("Saved!")
-            ConWrite("[LX Serializer] Saved!")
+            setStatusText("Saved! (" .. Walker.totalInst .. " instances)")
             return xml
         end
 
-        if opts.Clipboard then
-            pcall(function() if IO.setclipboard then IO.setclipboard(xml) end end)
-            setStatusText("Saved!")
-            ConWrite("[LX Serializer] Saved!")
+        if opts.Clipboard and IO.setclipboard then
+            pcall(IO.setclipboard, xml)
+            setStatusText("Saved to clipboard!")
             return xml
         end
 
@@ -1855,14 +1477,13 @@ function Fish.Save(instance, name, userOpts)
         end
 
         if not wrote then
-            setStatusText("Save failed (writefile)")
-            ConWrite("[LX Serializer] Save failed")
+            setStatusText("Failed: writefile rejected every path")
+            Status.fade(8)
             return xml
         end
 
-        setStatusText("Saved!")
-        ConWrite("[LX Serializer] Saved!")
-        task.wait(0.4)
+        setStatusText("Saved to " .. primaryPath .. " in " .. string.format("%.1fs", elapsed))
+        Status.fade(5)
         return xml
     end)
 
@@ -1874,15 +1495,14 @@ function Fish.Save(instance, name, userOpts)
 
     if not okSave then
         log("Save error: " .. tostring(result))
-        setStatusText("Save failed: " .. tostring(result):sub(1, 60))
-        ConWrite("[LX Serializer] Save error: " .. tostring(result))
+        setStatusText("Failed: " .. tostring(result):sub(1, 80))
+        Status.fade(8)
         return nil
     end
 
-    if Fish.Options.CloseConsole then closeConsoleWithVulns() end
-
     return result
 end
+
 
 function Fish.SavePlace(name, userOpts)
     return Fish.Save(game, name, userOpts)
@@ -1908,18 +1528,14 @@ function Fish.SaveModels(instance, name, userOpts)
     return Fish.Save(instance, name, merged)
 end
 
-Fish.LoadData = loadFromAPI
 Fish.Data = DATA
 Fish.ValidPropsForClass = apiClassProps
 Fish.EncodeBase64 = b64
 Fish.ExtractUri = extractUri
 Fish.SerializeProp = serializeProp
-Fish.EncodeAttributes = encodeAttributes
 Fish.EncodeTags = encodeTags --tags
-Fish.DecompileScript = lunauxDecompile --scripts
-Fish.HttpPost = httpPost --http (obv)
-Fish.ReadTerrainVoxels = readTerrainVoxels --useless shit
-Fish.Print = ConWrite
+Fish.DecompileScript = decompileScript --scripts
+Fish.SetStatus = setStatusText
 Fish.DeepClone = function(t)
     if type(t) ~= "table" then return t end
     local n = {}
@@ -1929,87 +1545,55 @@ end
 
 
 -- Let's you use SavePlace() (of course Konstant Uses that 🤬)
--- Let's you use Fishilizer()
 
-local genv = (getgenv and getgenv()) or _G or _ENV
-local _fetching = false
+local genv = (getgenv and getgenv()) or _G
 
-local function fetchLatest(kind, a, b)
-    if _fetching then
-        Fish.Init()
-        if kind == "instance" then return Fish.SaveInstance(a, b) end
-        return Fish.SavePlace(a, b)
-    end
-    _fetching = true
-    pcall(function()
-        local lua = game:HttpGetAsync(Fish.Bootstrap.scriptURL)
-        local fn = loadstring(lua)
-        if type(fn) == "function" then fn() end
-    end)
-    _fetching = false
-    local g = (getgenv and getgenv()) or _G
-    if g and g.Fish and type(g.Fish.SavePlace) == "function" then
-        if kind == "instance" then
-            return g.Fish.SaveInstance(a, b)
-        end
-        return g.Fish.SavePlace(a, b)
-    end
-    Fish.Init()
-    if kind == "instance" then return Fish.SaveInstance(a, b) end
+local function run(kind, a, b, c)
+    if not Fish._ready then Fish.Init() end
+    if kind == "instance" then return Fish.SaveInstance(a, b, c) end
     return Fish.SavePlace(a, b)
 end
 
-genv.fishilizer = function(name, opts)
-    return fetchLatest("place", name, opts)
-end
-
-genv.fishilize = function(name, opts)
-    return fetchLatest("place", name, opts)
-end
-
 genv.saveplace = function(name, opts)
-    return fetchLatest("place", name, opts)
+    return run("place", name, opts)
 end
 
 genv.dumpgame = function(name, opts)
-    return fetchLatest("place", name, opts)
+    return run("place", name, opts)
 end
 
 genv.fishsave = function(name, opts)
-    return fetchLatest("place", name, opts)
+    return run("place", name, opts)
 end
 
 genv.fetchplace = function(name, opts)
-    return fetchLatest("place", name, opts)
+    return run("place", name, opts)
 end
 
 genv.serialize = function(name, opts)
-    return fetchLatest("place", name, opts)
+    return run("place", name, opts)
 end
 
 genv.saveinstance = function(inst, name, opts)
-    return fetchLatest("instance", inst, name, opts)
+    return run("instance", inst, name, opts)
 end
 
 genv.Fish = Fish
-genv.Fishilizer = Fish
+genv.LXSerializer = Fish
 
 -- Thank you claude for adding useless underscores
 
-if genv and type(genv.FISHILIZER_CONFIG) == "table" then
-    for k, v in pairs(genv.FISHILIZER_CONFIG) do
+if type(genv.LX_CONFIG) == "table" then
+    for k, v in pairs(genv.LX_CONFIG) do
         Fish.Options[k] = v
     end
 end
 
-if Fish.Options.Console then
-    ConInit()
-    if Fish.Options.AutoRun then
-        task.spawn(function()
-            task.wait(1)
-            fetchLatest("place")
-        end)
-    end
+if Fish.Options.AutoRun then
+    task.spawn(function()
+        task.wait(1)
+        run("place")
+    end)
 end
 
 return Fish
