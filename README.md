@@ -1,4 +1,3 @@
-
 <div align="center">
 
 <img src="logo.png" alt="LX Serializer Logo" width="150" />
@@ -9,44 +8,42 @@
 
 LX Serializer saves Roblox instances and their properties to `.rbxlx` files that can be opened in Roblox Studio.
 
-[![Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=flat-square&logo=github)](https://github.com/Civilation/LXSerializer)
-[![Source](https://img.shields.io/badge/Source-Lua-blue?style=flat-square)](https://github.com/Civilation/LXSerializer/blob/main/Fishilizer.lua)
-[![Version](https://img.shields.io/badge/Version-10.8.1-brightgreen?style=flat-square)](https://github.com/Civilation/LXSerializer)
+[![Repository](https://img.shields.io/badge/GitHub-Repository-181717?style=flat-square&logo=github)](https://github.com/4er2/LXSerializer)
+[![Source](https://img.shields.io/badge/Source-Lua-blue?style=flat-square)](https://github.com/4er2/LXSerializer/blob/main/Serializer.lua)
 [![Discord](https://img.shields.io/badge/Discord-Community-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/GZDXBMjndT)
 [![Cash App](https://img.shields.io/badge/Cash%20App-Support-00C244?style=flat-square&logo=cashapp&logoColor=white)](https://cash.app/$aeroglass)
 
-[GitHub Repository](https://github.com/Civilation/LXSerializer) · [Source Code](https://github.com/Civilation/LXSerializer/blob/main/Fishilizer.lua) · [Raw Lua Source](https://raw.githubusercontent.com/Civilation/LXSerializer/main/Fishilizer.lua)
+[GitHub Repository](https://github.com/4er2/LXSerializer) · [Source Code](https://github.com/4er2/LXSerializer/blob/main/Serializer.lua) · [Raw Lua Source](https://raw.githubusercontent.com/4er2/LXSerializer/main/Serializer.lua)
 
 </div>
 
 ## Overview
 
-LX Serializer reads the DataModel of a running Roblox game and saves the instances it can access. It supports property discovery, terrain data, CSG data, attributes, tags, and script extraction when the environment allows it.
+LX Serializer reads the DataModel of a running Roblox game and saves the instances it can access. It supports property discovery, terrain data, CSG and union data, attributes, tags, and script extraction when the environment allows it.
 
 You can save an entire place, export scripts separately, save models without scripts, or choose a specific instance to save.
 
-LX Serializer uses Roblox API information, fallback property maps, and engine reflection when available to find properties to save. Some properties need special handling because they contain binary data or values that cannot be written as ordinary XML.
+The property lists LX Serializer needs are written into the script itself. The only thing it downloads is the Roblox API dump, which is just a list of class and property names — and if that download fails, the save still runs.
 
 The goal is to save as much of the original place as possible. Some properties and data may not be accessible, so exported files might not be exact copies of the original.
 
-
 ## Features
 
-- **Property discovery:** Uses `getproperties()` when available, with fallback property maps for other environments.
-- **Roblox API dump:** Retrieves class and property information to help with saving.
+- **Property discovery:** Uses `getproperties()` when available, combined with the built-in property maps.
+- **Roblox API dump:** Reads class and property information to widen what can be saved.
 - **Reflection support:** Uses engine reflection when available.
-- **Terrain:** Attempts to save terrain materials and occupancy data through voxel capture.
-- **CSG data:** Supports accessible binary properties such as `ChildData` and `PhysicsData`.
+- **Terrain:** Saves terrain materials and occupancy data through voxel capture.
+- **Unions and CSG:** Saves `UnionOperation`, `PartOperation`, `MeshPart` and friends through `AssetId`, `InitialSize`, `ChildData`, `PhysicsData` and the other binary properties, so Studio can rebuild the shape.
 - **Attributes:** Can save instance attributes.
 - **CollectionService tags:** Can save tags attached to instances.
-- **Script extraction:** Attempts to recover script source when the environment supports it.
+- **Script extraction:** Recovers script source when the environment supports it.
 - **Bytecode fallback:** Can save bytecode when enabled and available.
 - **Export modes:** Supports full-place, script-only, and model-only exports.
 - **Instance filtering:** Provides options for excluding player characters, core scripts, and other instances.
 - **Tool preservation:** Can temporarily move eligible backpack tools into `StarterPack` while saving.
-- **Output options:** Supports file output and other methods available in the environment.
-- **Remote data:** Loads serializer data and uses fallback data when needed.
-- **Progress display:** Shows save progress when supported.
+- **Streaming output:** Writes the file straight to disk in chunks, so very large places do not have to be held in memory all at once.
+- **Progress display:** Shows a status line on your screen while saving.
+- **Saved log:** Writes what happened to a log file you can read afterwards.
 
 ## Getting started
 
@@ -54,15 +51,14 @@ The goal is to save as much of the original place as possible. Some properties a
 
 LX Serializer depends on the functions available in the environment where it runs.
 
-Depending on the features you use, you may need:
+- `writefile` — required. Without it there is nowhere to put the file, and the save stops straight away. The one exception is passing your own `Callback` function, which receives the finished XML instead.
+- `gethiddenproperty` — needed for terrain, and for the binary union and mesh data. Without it, terrain is simply not saved.
+- `decompile` — needed to recover script source.
+- `getscriptbytecode` — optional, for the bytecode fallback.
+- `setclipboard` — optional, for the clipboard output.
+- HTTP access — optional, for the Roblox API dump.
 
-- HTTP access to download LX Serializer and its supporting data.
-- `loadstring` support.
-- File-writing functions such as `writefile`.
-- `getproperties()` or other property discovery functions.
-- Compatible decompilation or bytecode functions for script recovery.
-
-Not every environment supports all of these functions. Features that depend on unavailable functions may be skipped or produce incomplete results.
+Not every environment supports all of these. Features that depend on unavailable functions are skipped, and the script tells you which ones.
 
 ### Automatic execution
 
@@ -70,21 +66,21 @@ Load LX Serializer with the following code:
 
 ```lua
 loadstring(game:HttpGetAsync(
-    "https://raw.githubusercontent.com/Civilation/LXSerializer/main/Fishilizer.lua"
+    "https://raw.githubusercontent.com/4er2/LXSerializer/main/Serializer.lua"
 ))()
 ```
 
-This loads LX Serializer and runs its default save behavior.
+This loads LX Serializer and saves the whole place about a second later.
 
 ### Manual execution
 
-To control what gets saved, disable automatic execution before loading LX Serializer.
+To control what gets saved, turn off the automatic save before loading LX Serializer.
 
 ```lua
-getgenv().FISHILIZER_NO_AUTORUN = true
+getgenv().LX_CONFIG = { AutoRun = false }
 
 local Fish = loadstring(game:HttpGetAsync(
-    "https://raw.githubusercontent.com/Civilation/LXSerializer/main/Fishilizer.lua"
+    "https://raw.githubusercontent.com/4er2/LXSerializer/main/Serializer.lua"
 ))()
 
 Fish.Init()
@@ -102,7 +98,7 @@ Fish.SaveModels(game, "ModelsOnly")
 Fish.Save(workspace.MyModel, "SingleModel")
 ```
 
-Saving to disk requires an environment with the appropriate file-writing functions.
+Saving to disk requires an environment with `writefile`.
 
 ## Export modes
 
@@ -155,14 +151,12 @@ The main functions available through the `Fish` table include:
 | `Fish.SaveScripts(instance, name?, opts?)` | Saves scripts. |
 | `Fish.SaveModels(instance, name?, opts?)` | Saves non-script instances. |
 | `Fish.FetchClasses(cacheFile?)` | Fetches or loads cached Roblox API information. |
-| `Fish.LoadData()` | Loads supporting serializer data. |
 | `Fish.ApplyAPIDump(data)` | Reads API dump information for property discovery. |
 
 LX Serializer also registers convenience aliases in the execution environment:
 
 | Alias | Description |
 | --- | --- |
-| `fishilizer(name?, opts?)` | Saves the current place. |
 | `saveplace(name?, opts?)` | Saves the current place. |
 | `dumpgame(name?, opts?)` | Saves the current place. |
 | `fishsave(name?, opts?)` | Saves the current place. |
@@ -170,18 +164,21 @@ LX Serializer also registers convenience aliases in the execution environment:
 | `serialize(name?, opts?)` | Saves the current place. |
 | `saveinstance(inst, name?, opts?)` | Saves a specific instance. |
 
-For additional information, see the [LX Serializer GitHub repository](https://github.com/Civilation/LXSerializer).
+The script itself is available as `getgenv().LXSerializer` and `getgenv().Fish`.
+
+For additional information, see the [LX Serializer GitHub repository](https://github.com/4er2/LXSerializer).
 
 ## Configuration
 
-Configuration can be set through `FISHILIZER_CONFIG` before loading the script.
+Configuration can be set through `LX_CONFIG` before loading the script.
 
 ### Example
 
 ```lua
-getgenv().FISHILIZER_CONFIG = {
+getgenv().LX_CONFIG = {
     Mode = "full",
 
+    AutoRun = false,
     Decompile = false,
     SaveBytecode = false,
 
@@ -199,11 +196,11 @@ getgenv().FISHILIZER_CONFIG = {
 }
 
 loadstring(game:HttpGetAsync(
-    "https://raw.githubusercontent.com/Civilation/LXSerializer/main/Fishilizer.lua"
+    "https://raw.githubusercontent.com/4er2/LXSerializer/main/Serializer.lua"
 ))()
 ```
 
-This example turns off decompilation, enables attribute and tag saving, and excludes player characters.
+This example turns off the automatic save and decompilation, enables attribute and tag saving, and excludes player characters.
 
 ### Per-save options
 
@@ -232,43 +229,51 @@ This changes the settings for one export without changing the global configurati
 | `APIProperties` | `true` | Uses API property information when saving. |
 | `UseReflectionService` | `true` | Uses engine reflection when available. |
 | `FetchDocs` | `true` | Enables API dump fetching. |
+| `APIDumpURL` | MaximumADHD's API dump | Sets where the API dump is downloaded from. |
 | `EmitTags` | `true` | Includes supported CollectionService tag data. |
 | `EmitAttributes` | `false` | Includes instance attributes. |
 | `IncludeBackpack` | `true` | Includes eligible backpack tools in the save process. |
 | `RemovePlayerCharacters` | `true` | Excludes player characters. |
+| `StripCharacters` | `true` | Filters character-related instances. |
+| `StripCoreScripts` | `true` | Filters core script containers. |
 | `IgnoreDefaultProps` | `true` | Skips properties matching their defaults. |
 | `IgnoreNotArchivable` | `true` | Applies archivable-related filtering. |
-| `TerrainResolution` | `8` | Sets terrain voxel resolution. |
-| `TerrainCellCap` | `4194304` | Sets the maximum number of terrain cells to capture. |
+| `Anonymous` | `false` | Replaces character names with the player's user id. |
 | `Depth` | `100` | Sets the maximum traversal depth. |
-| `OUT` | `"LXSerializer"` | Sets the default output folder name. |
-| `AvoidFileOverwrite` | `true` | Avoids intentionally overwriting existing files. |
-| `ShowStatus` | `true` | Shows the progress interface when available. |
-| `Notify` | `true` | Enables supported notifications. |
+| `OUT` | `"LXSerializer"` | Sets the output folder name. |
+| `FilePath` | `false` | Sets an exact file to write to. |
+| `AvoidFileOverwrite` | `true` | Keeps an existing file of the same name. |
+| `StreamToFile` | `true` | Writes the file in chunks as it is built. |
+| `StreamChunk` | `1048576` | Sets the chunk size used for streaming. |
+| `LogToFile` | `true` | Writes the run log to `LXSerializer/LXSerializer.log`. |
+| `ShowStatus` | `true` | Shows the progress line on your screen. |
+| `Notify` | `true` | Sends a game notification when the save finishes. |
+| `ReadMe` | `true` | Writes a README script into the saved place. |
+| `Callback` | `false` | A function that receives the finished XML. |
+| `Clipboard` | `false` | Copies the finished XML to the clipboard. |
+| `AutoRun` | `true` | Saves the place shortly after the script loads. |
 
 These are the main options and their documented defaults. Other options may be available in the current version.
 
-See the [LX Serializer GitHub repository](https://github.com/Civilation/LXSerializer) for project information and source code.
+See the [LX Serializer GitHub repository](https://github.com/4er2/LXSerializer) for project information and source code.
 
 > [!WARNING]
-> `KillAllScripts` is an available option that defaults to `false`. Enabling it can disable accessible script instances during saving and affect the running game.
+> `KillAllScripts` is an available option that defaults to `false`. Enabling it disables accessible script instances during saving and affects the running game.
 
 ## How it works
 
 LX Serializer goes through the selected instances and builds an XML file from the data it can access.
 
-1. Loads configuration and supporting property data.
-2. Gets property information from API dumps, fallback maps, and reflection when available.
+1. Loads configuration and the built-in property data.
+2. Gets property information from the API dump, the built-in maps, and reflection when available.
 3. Goes through the selected instances and applies the configured filters.
 4. Collects supported properties, attributes, tags, and content data.
-5. Attempts to capture terrain voxels and CSG binary data.
-6. Attempts script source recovery when enabled and supported.
-7. Builds the `.rbxlx` XML file.
-8. Writes the result using the selected output method.
+5. Captures terrain voxels and union, mesh, and CSG binary data when `gethiddenproperty` is available.
+6. Recovers script source when decompilation is enabled and supported.
+7. Builds the `.rbxlx` XML, writing it straight to disk in chunks.
+8. Reports the result on your screen and in the log file.
 
 Some properties need special handling because they contain binary data or values that cannot be written as ordinary XML.
-
-Supporting API data includes class maps, property lists, binary properties, and other information used by LX Serializer.
 
 ## Limitations
 
@@ -282,13 +287,15 @@ Server `Script` instances receive placeholder source in the current implementati
 
 ### Terrain
 
-Terrain saving depends on accessible voxel APIs. Large regions may exceed the configured cell limit, and some terrain data may not be available.
+Terrain saving needs `gethiddenproperty`. Without it, terrain is left out of the file entirely.
 
-Adjust `TerrainResolution` and `TerrainCellCap` when working with large terrain regions.
+### Unions and meshes
+
+Union and mesh shapes are saved through `AssetId` and the binary geometry properties. The shape is rebuilt by Studio when the file is opened, so the asset still needs to be reachable from the machine opening it.
 
 ### Properties
 
-Some properties may be inaccessible, unsupported, or filtered out. Roblox updates can introduce new classes and properties that the current property maps do not cover.
+Some properties may be inaccessible, unsupported, or filtered out. Roblox updates can introduce new classes and properties that the built-in maps do not cover.
 
 ### Runtime state
 
@@ -296,15 +303,14 @@ Not all runtime data can be restored from an exported file. Engine-managed value
 
 ### File output
 
-File-writing and clipboard functions depend on the environment. Successfully creating the XML does not always mean the file was saved correctly.
+The file is written with `writefile`. Successfully building the XML does not always mean the file landed where you expected.
 
 ## Troubleshooting
 
 ### The save fails
 
-- Check the execution output for errors.
-- Make sure the required functions are available.
-- Check that file writing is supported.
+- The status line on your screen says why. `Failed: executor has no writefile` means the environment cannot write files.
+- Check `LXSerializer/LXSerializer.log` for the details.
 - Try saving a smaller model to find out which instances might be causing the problem.
 
 ### Properties are missing
@@ -312,23 +318,25 @@ File-writing and clipboard functions depend on the environment. Successfully cre
 - Check whether `getproperties()` is available.
 - Check the API property settings.
 - Review which properties are filtered by your options.
-- Update the supporting API data if it is outdated.
 
-### Terrain is incomplete
+### Terrain is missing
 
-- Check whether voxel-reading functions are available.
-- Try saving a smaller terrain region.
-- Review `TerrainResolution` and `TerrainCellCap`.
+- Check whether `gethiddenproperty` is available. Without it terrain is skipped.
+
+### Unions look wrong or are missing their shape
+
+- Check whether `gethiddenproperty` is available, since the geometry data is read through it.
+- Open the file on a machine that can reach the union asset.
 
 ### Scripts are missing source
 
 - Check whether `Decompile` is enabled.
-- Check whether the environment has compatible decompilation functions.
+- Check whether the environment has a working `decompile` function.
 - Remember that the current implementation does not recover the original source of server scripts.
 
 ### The exported file will not open
 
-- Check the output for serialization errors.
+- Check the log for serialization errors.
 - Make sure the file was written completely.
 - Try exporting a smaller section.
 - Open the file in Roblox Studio to see whether any data is invalid or unsupported.
@@ -340,16 +348,16 @@ File-writing and clipboard functions depend on the environment. Successfully cre
 - [x] Make the core XML serializer.
 - [x] Add full-place, script-only, and model-only export modes.
 - [x] Add support for saving individual instances.
-- [x] Add property discovery and fallback property maps.
+- [x] Add property discovery and built-in property maps.
 - [x] Add Roblox API dump support.
 - [x] Add engine reflection support where available.
 - [x] Add instance filtering options.
 - [x] Add attribute and CollectionService tag saving.
 - [x] Add terrain voxel capture.
-- [x] Add support for accessible CSG binary properties.
+- [x] Add support for accessible CSG and union binary properties.
 - [x] Add optional script decompilation and bytecode fallback.
-- [x] Add remote configuration data and fallback tables.
-- [x] Add progress display and different output methods.
+- [x] Write the file in chunks so large places fit.
+- [x] Add the on-screen progress line, log file, and output methods.
 - [x] Publish the source code on GitHub.
 
 ### Planned
@@ -375,9 +383,9 @@ Cash App: [$aeroglass](https://cash.app/$aeroglass)
 
 ## Links
 
-- [GitHub Repository](https://github.com/Civilation/LXSerializer)
-- [Source Code](https://github.com/Civilation/LXSerializer/blob/main/Fishilizer.lua)
-- [Raw Lua Source](https://raw.githubusercontent.com/Civilation/LXSerializer/main/Fishilizer.lua)
+- [GitHub Repository](https://github.com/4er2/LXSerializer)
+- [Source Code](https://github.com/4er2/LXSerializer/blob/main/Serializer.lua)
+- [Raw Lua Source](https://raw.githubusercontent.com/4er2/LXSerializer/main/Serializer.lua)
 - [Discord](https://discord.gg/GZDXBMjndT)
 - [Cash App](https://cash.app/$aeroglass)
 
