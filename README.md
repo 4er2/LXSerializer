@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="logo.png" alt="LX Serializer Logo" width="150" />
+<img src="icon.png" alt="LX Serializer Icon" width="150" />
 
 # LX Serializer
 
@@ -19,11 +19,11 @@ LX Serializer saves Roblox instances and their properties to `.rbxlx` files that
 
 ## Overview
 
-LX Serializer reads the DataModel of a running Roblox game and saves the instances it can access. It supports property discovery, terrain data, CSG and union data, attributes, tags, and script extraction when the environment allows it.
+LX Serializer reads the DataModel of a running Roblox game and saves the instances it can access. It supports property discovery, terrain data, CSG and union data, attributes, tags, and script extraction.
 
 You can save an entire place, export scripts separately, save models without scripts, or choose a specific instance to save.
 
-The property lists LX Serializer needs are written into the script itself. The only thing it downloads is the Roblox API dump, which is just a list of class and property names — and if that download fails, the save still runs.
+The property lists LX Serializer needs are written into the script itself. The only thing it downloads is the Roblox API dump, which is just a list of class and property names — and if that download fails, the script still uses its built-in property maps.
 
 The goal is to save as much of the original place as possible. Some properties and data may not be accessible, so exported files might not be exact copies of the original.
 
@@ -33,7 +33,7 @@ The goal is to save as much of the original place as possible. Some properties a
 - **Roblox API dump:** Reads class and property information to widen what can be saved.
 - **Reflection support:** Uses engine reflection when available.
 - **Terrain:** Saves terrain materials and occupancy data through voxel capture.
-- **Unions and CSG:** Saves `UnionOperation`, `PartOperation`, `MeshPart` and friends through `AssetId`, `InitialSize`, `ChildData`, `PhysicsData` and the other binary properties, so Studio can rebuild the shape.
+- **Unions and CSG:** Saves `UnionOperation`, `PartOperation`, `MeshPart` and friends through `AssetId`, `InitialSize`, `ChildData`, `PhysicsData` and the other binary properties, so Studio can rebuild the shapes.
 - **Attributes:** Can save instance attributes.
 - **CollectionService tags:** Can save tags attached to instances.
 - **Script extraction:** Recovers script source when the environment supports it.
@@ -51,7 +51,7 @@ The goal is to save as much of the original place as possible. Some properties a
 
 LX Serializer depends on the functions available in the environment where it runs.
 
-- `writefile` — required. Without it there is nowhere to put the file, and the save stops straight away. The one exception is passing your own `Callback` function, which receives the finished XML instead.
+- `writefile` — required. Without it there is nowhere to put the file, and the save stops straight away. The one exception is passing your own `Callback` function, which receives the finished XML directly.
 - `gethiddenproperty` — needed for terrain, and for the binary union and mesh data. Without it, terrain is simply not saved.
 - `decompile` — needed to recover script source.
 - `getscriptbytecode` — optional, for the bytecode fallback.
@@ -291,7 +291,7 @@ Terrain saving needs `gethiddenproperty`. Without it, terrain is left out of the
 
 ### Unions and meshes
 
-Union and mesh shapes are saved through `AssetId` and the binary geometry properties. The shape is rebuilt by Studio when the file is opened, so the asset still needs to be reachable from the machine opening it.
+Union and mesh shapes are saved through `AssetId` and the binary geometry properties. The shape is rebuilt by Studio when the file is opened, so the asset still needs to be reachable from the machine running Studio.
 
 ### Properties
 
