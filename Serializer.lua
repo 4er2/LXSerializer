@@ -21,8 +21,6 @@ Thank you to everyone who has supported LX Serializer so far.
 
 Enjoy this special gift <3
 
-Made by Garfield Cat Presents.
-
 ]]
 
 
@@ -52,7 +50,7 @@ local IO = {
     gethui = gethui,
     protectgui = protectgui,
 }
----lowk if you dont have any of these on ur executor its ggs
+
 
 local _logCache = {}
 local _logPath = nil
@@ -165,7 +163,7 @@ local function setStatusText(text)
 end
 
 
---- a list of apis
+--- apis
 Fish.Options = {
     Decompile = true,
     MaxThreads = 3,
@@ -1581,7 +1579,6 @@ end
 genv.Fish = Fish
 genv.LXSerializer = Fish
 
--- Thank you claude for adding useless underscores
 
 if type(genv.LX_CONFIG) == "table" then
     for k, v in pairs(genv.LX_CONFIG) do
