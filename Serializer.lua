@@ -24,7 +24,6 @@ Enjoy this special gift <3
 ]]
 
 
-
 local Fish = {}
 
 
@@ -51,6 +50,10 @@ local IO = {
     protectgui = protectgui,
 }
 
+local sbyte, schar, sfind, sgsub, fmt = string.byte, string.char, string.find, string.gsub, string.format
+local floor, abs, huge = math.floor, math.abs, math.huge
+local tconcat, tclear = table.concat, table.clear
+local clock = os.clock
 
 local _logCache = {}
 local _logPath = nil
@@ -69,7 +72,7 @@ end
 local function flushLog()
     if not Fish.Options.LogToFile or #_logCache == 0 then return end
     local path = logFilePath()
-    local blob = table.concat(_logCache, "\n") .. "\n"
+    local blob = tconcat(_logCache, "\n") .. "\n"
     _logCache = {}
     if IO.appendfile then
         pcall(IO.appendfile, path, blob)
@@ -106,23 +109,14 @@ function Status.mount()
     label.Position = UDim2.new(0.5, 0, 0, 14)
     label.Size = UDim2.new(0, 0, 0, 34)
     label.AutomaticSize = Enum.AutomaticSize.X
-    label.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
-    label.BackgroundTransparency = 0.15
+    label.BackgroundTransparency = 1
     label.BorderSizePixel = 0
     label.Font = Enum.Font.Code
     label.TextSize = 16
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.TextStrokeTransparency = 0.4
     label.Text = ""
     label.Parent = gui
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
-    corner.Parent = label
-
-    local padding = Instance.new("UIPadding")
-    padding.PaddingLeft = UDim.new(0, 14)
-    padding.PaddingRight = UDim.new(0, 14)
-    padding.Parent = label
 
     if IO.protectgui then pcall(IO.protectgui, gui) end
     gui.Parent = IO.gethui and IO.gethui() or CoreGui
@@ -139,7 +133,7 @@ function Status.fade(delay)
         local label, gui = Status.label, Status.gui
         local info = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
         pcall(function()
-            TweenService:Create(label, info, { TextTransparency = 1, BackgroundTransparency = 1 }):Play()
+            TweenService:Create(label, info, { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
         end)
         task.wait(0.7)
         if Status.token ~= token then return end
@@ -157,7 +151,7 @@ local function setStatusText(text)
     local ok, label = pcall(Status.mount)
     if ok and label then
         label.TextTransparency = 0
-        label.BackgroundTransparency = 0.15
+        label.TextStrokeTransparency = 0.4
         label.Text = text
     end
 end
@@ -166,7 +160,8 @@ end
 --- apis
 Fish.Options = {
     Decompile = true,
-    MaxThreads = 3,
+    MaxThreads = 6,
+    DecompileTimeout = 10,
     SaveBytecode = false,
     RemovePlayerCharacters = true,
     IncludeBackpack = true,
@@ -192,7 +187,7 @@ Fish.Options = {
     ShowStatus = true,
     ReadMe = true,
     StreamToFile = true,
-    StreamChunk = 1048576,
+    StreamChunk = 4194304,
     LogToFile = true,
     AutoRun = true,
     OUT = "LXSerializer",
@@ -236,11 +231,16 @@ local CRITICAL_PROPS = {
     "Attachment0","Attachment1","SmoothGrid","MaterialColors","ChildData","PhysicsData","PhysicalConfigData",
 }
 local CRITICAL_PROPS_SET = toSet(CRITICAL_PROPS)
-local SKIP_SVC = toSet({"CoreGui","CorePackages","CoreScripts","Chat","LogService"})
+local GAME_SVC = toSet({"Workspace","Lighting","ReplicatedFirst","ReplicatedStorage","StarterGui","StarterPack","StarterPlayer","Teams","SoundService","MaterialService","ServerStorage","ServerScriptService"})
+local ROBLOX_JUNK = toSet({"PlayerModule","PlayerScriptsLoader","RbxCharacterSounds","ChatScript","BubbleChat","ChatServiceRunner","DefaultChatSystemChatEvents","ClientChatModules","ChatModules","CoreScripts"})
+local JUNK_PARENTS = toSet({"StarterPlayerScripts","StarterCharacterScripts","ReplicatedStorage","ReplicatedFirst","StarterGui"})
 local SKIP_PROP = toSet({"Parent","RobloxLocked","HistoryId","ClassName","AttributesSerialize","Tags"})
+local PLAN_SKIP = toSet({"Source","Color3uint8","ScriptGuid","InitialSize"})
 local BINARY_PROPS = toSet({"SmoothGrid","ChildData","ChildData2","MeshData","MeshData2","PhysicsData","PhysicalConfigData","MaterialColors"})
 local REAL_CONTENT_PROPS = toSet({"Texture","TextureId","TextureID","Image","MeshId","SoundId","AnimationId","ShirtTemplate","PantsTemplate","Graphic","AssetId"})
 local CHARACTER_CLASSES = toSet({"Humanoid","Head","Torso","HumanoidRootPart","UpperTorso","LowerTorso"})
+local NUMBER_TYPES = toSet({"float","double","int","int64"})
+local EQ_RELIABLE = toSet({"Vector3","Vector2","CFrame","Color3","UDim","UDim2","BrickColor","EnumItem","Instance","NumberRange","Rect","Ray","Faces","Axes","boolean","string"})
 local CONTENT_PROP_EXACT = {}
 local CORE_SCRIPT_NAMES = {}
 local INSTANCE_SPECIFIC = {}
@@ -257,43 +257,11 @@ end
 
 
 local apiClassProps = {}
+local apiHidden = {}
+local apiTypes = {}
 
-local function buildApiClassProps(data)
-    if type(data) ~= "table" or type(data.Classes) ~= "table" then return end
-    local ownProps = {}
-    local superclass = {}
-    for _, class in ipairs(data.Classes) do
-        local cn = class.Name
-        if cn then
-            superclass[cn] = class.Superclass
-            local props = {}
-            if type(class.Members) == "table" then
-                for _, m in ipairs(class.Members) do
-                    if m.MemberType == "Property" and m.Name then
-                        props[m.Name] = true
-                    end
-                end
-            end
-            ownProps[cn] = props
-        end
-    end
-    local count = 0
-    for cn in pairs(ownProps) do
-        local combined = {}
-        local cur = cn
-        local guard = 0
-        while cur and guard < 50 do
-            local p = ownProps[cur]
-            if not p then break end
-            for k in pairs(p) do combined[k] = true end
-            cur = superclass[cur]
-            guard = guard + 1
-        end
-        apiClassProps[cn] = combined
-        count = count + 1
-    end
-    log("API dump: property cache built for " .. count .. " classes")
-end
+local reflSvc = nil
+local reflDone = {}
 
 local function buildReflectionProps()
     if not Fish.Options.UseReflectionService then return end
@@ -302,34 +270,26 @@ local function buildReflectionProps()
         log("ReflectionService not available.")
         return
     end
-    
-    local okClasses, classes = pcall(function() return RS:GetClasses({}) end)
-    if not okClasses or not classes then return end
-    
-    local count = 0
-    for _, class in ipairs(classes) do
-        local className = class.Name
-        if className and not INSTANCE_SPECIFIC[className] then
-            local props = {}
-            local okProps, reflectedProps = pcall(function() return RS:GetPropertiesOfClass(className, {}) end)
-            if okProps and reflectedProps then
-                for _, prop in ipairs(reflectedProps) do
-                    if prop.Name and not shouldSkipProp(prop.Name) then
-                        table.insert(props, prop.Name)
-                        if CRITICAL_PROPS_SET[prop.Name] then
-                            apiClassProps[className] = apiClassProps[className] or {}
-                            apiClassProps[className][prop.Name] = true
-                        end
-                    end
-                end
-            end
-            if #props > 0 then
-                INSTANCE_SPECIFIC[className] = props
-                count = count + 1
+    reflSvc = RS
+end
+
+local function reflectClass(className)
+    if not reflSvc or reflDone[className] then return end
+    reflDone[className] = true
+    if INSTANCE_SPECIFIC[className] then return end
+    local okProps, reflectedProps = pcall(function() return reflSvc:GetPropertiesOfClass(className, {}) end)
+    if not okProps or not reflectedProps then return end
+    local props = {}
+    for _, prop in ipairs(reflectedProps) do
+        if prop.Name and not shouldSkipProp(prop.Name) then
+            props[#props + 1] = prop.Name
+            if CRITICAL_PROPS_SET[prop.Name] then
+                apiClassProps[className] = apiClassProps[className] or {}
+                apiClassProps[className][prop.Name] = true
             end
         end
     end
-    log("ReflectionService: built property cache for " .. count .. " classes directly from engine.")
+    if #props > 0 then INSTANCE_SPECIFIC[className] = props end
 end
 
 local function isPropValid(cls, propName)
@@ -343,31 +303,63 @@ local b64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 
 local b64pairs = {}
 for i = 0, 63 do b64pairs[i] = b64chars:sub(i + 1, i + 1) end
+local b64pairs12 = {}
+for i = 0, 4095 do b64pairs12[i] = b64pairs[i // 64] .. b64pairs[i % 64] end
 
-local function b64(s)
-    if type(s) ~= "string" then return "" end
+local function luaB64(s)
     local res = {}
     local n = 0
     local len = #s
-    local byte = string.byte
     for i = 1, len - 2, 3 do
-        local a, b, c = byte(s, i, i + 2)
+        local a, b, c = sbyte(s, i, i + 2)
         local v = a * 65536 + b * 256 + c
         n = n + 1
-        res[n] = b64pairs[v // 262144] .. b64pairs[(v // 4096) % 64] .. b64pairs[(v // 64) % 64] .. b64pairs[v % 64]
+        res[n] = b64pairs12[v // 4096] .. b64pairs12[v % 4096]
     end
     local rem = len % 3
     if rem == 1 then
-        local a = byte(s, len)
+        local a = sbyte(s, len)
         n = n + 1
         res[n] = b64pairs[a // 4] .. b64pairs[(a % 4) * 16] .. "=="
     elseif rem == 2 then
-        local a, b = byte(s, len - 1, len)
+        local a, b = sbyte(s, len - 1, len)
         local v = a * 256 + b
         n = n + 1
         res[n] = b64pairs[v // 1024] .. b64pairs[(v // 16) % 64] .. b64pairs[(v % 16) * 4] .. "="
     end
-    return table.concat(res)
+    return tconcat(res)
+end
+
+local nativeB64 = nil
+do
+    local candidates = {}
+    if type(crypt) == "table" then
+        candidates[#candidates + 1] = crypt.base64encode
+        candidates[#candidates + 1] = crypt.base64_encode
+        if type(crypt.base64) == "table" then candidates[#candidates + 1] = crypt.base64.encode end
+    end
+    if type(base64) == "table" then candidates[#candidates + 1] = base64.encode end
+    candidates[#candidates + 1] = base64_encode
+    local probe = {}
+    for i = 0, 255 do probe[#probe + 1] = schar(i) end
+    probe = tconcat(probe) .. "\0\0xy"
+    local expected = luaB64(probe)
+    for _, fn in ipairs(candidates) do
+        if type(fn) == "function" then
+            local ok, r = pcall(fn, probe)
+            if ok and r == expected then nativeB64 = fn break end
+        end
+    end
+end
+
+local function b64(s)
+    if type(s) ~= "string" then return "" end
+    if s == "" then return "" end
+    if nativeB64 then
+        local ok, r = pcall(nativeB64, s)
+        if ok and type(r) == "string" then return r end
+    end
+    return luaB64(s)
 end
 
 local function decompileScript(inst)
@@ -404,50 +396,95 @@ end
 
 function Fish.ApplyAPIDump(data)
     if type(data) ~= "table" or type(data.Classes) ~= "table" then return end
-    local added = 0
+    local byName = {}
     for _, class in ipairs(data.Classes) do
-        local className = class.Name
-        if className and not INSTANCE_SPECIFIC[className] then
-            local props = {}
-            if type(class.Members) == "table" then
-                for _, member in ipairs(class.Members) do
-                    if member.MemberType == "Property" and member.Name and not shouldSkipProp(member.Name) then
-                        table.insert(props, member.Name)
+        if type(class) == "table" and class.Name then byName[class.Name] = class end
+    end
+    local resolved = {}
+    local function resolve(cn, guard)
+        local r = resolved[cn]
+        if r then return r end
+        r = { list = {}, set = {}, all = {}, hidden = {}, types = {} }
+        resolved[cn] = r
+        local class = byName[cn]
+        if not class then return r end
+        if type(class.Members) == "table" then
+            for _, m in ipairs(class.Members) do
+                local pn = m.Name
+                if m.MemberType == "Property" and type(pn) == "string" then
+                    r.all[pn] = true
+                    if type(m.Tags) == "table" then
+                        for _, t in ipairs(m.Tags) do
+                            if t == "NotScriptable" then r.hidden[pn] = true break end
+                        end
+                    end
+                    if type(m.ValueType) == "table" and type(m.ValueType.Name) == "string" then
+                        local cat = m.ValueType.Category
+                        if cat == "Enum" then
+                            r.types[pn] = "Enum"
+                        elseif cat == "Class" then
+                            r.types[pn] = "Instance"
+                        else
+                            r.types[pn] = m.ValueType.Name
+                        end
+                    end
+                    local ser = m.Serialization
+                    local canLoad = not (type(ser) == "table" and ser.CanLoad == false)
+                    if canLoad and not r.set[pn] and not shouldSkipProp(pn) then
+                        r.set[pn] = true
+                        r.list[#r.list + 1] = pn
                     end
                 end
             end
-            if class.Superclass and INSTANCE_SPECIFIC[class.Superclass] then
-                for _, p in ipairs(INSTANCE_SPECIFIC[class.Superclass]) do table.insert(props, p) end
+        end
+        local sc = class.Superclass
+        if sc and byName[sc] and guard < 64 then
+            local sup = resolve(sc, guard + 1)
+            for k in pairs(sup.all) do r.all[k] = true end
+            for k in pairs(sup.hidden) do if r.hidden[k] == nil then r.hidden[k] = true end end
+            for k, v in pairs(sup.types) do if r.types[k] == nil then r.types[k] = v end end
+            for _, k in ipairs(sup.list) do
+                if not r.set[k] then
+                    r.set[k] = true
+                    r.list[#r.list + 1] = k
+                end
             end
-            if #props > 0 then
-                INSTANCE_SPECIFIC[className] = props
-                added = added + 1
-            end
+        end
+        return r
+    end
+    local added = 0
+    for cn in pairs(byName) do
+        local r = resolve(cn, 0)
+        apiClassProps[cn] = r.all
+        apiHidden[cn] = r.hidden
+        apiTypes[cn] = r.types
+        if not INSTANCE_SPECIFIC[cn] and #r.list > 0 then
+            INSTANCE_SPECIFIC[cn] = r.list
+            added = added + 1
         end
     end
     log("API dump: added " .. added .. " classes to INSTANCE_SPECIFIC")
-    buildApiClassProps(data)
 end
 
 local _statusAccum = 0
-local _lastYield = os.clock()
+local _lastYield = clock()
 local _lastStatus = 0
 
 local function breathe()
-    if os.clock() - _lastYield >= 0.2 then
+    if clock() - _lastYield >= 0.5 then
         task.wait()
-        _lastYield = os.clock()
+        _lastYield = clock()
     end
 end
 
 local function bumpStatus(prefix, current, total)
     _statusAccum = _statusAccum + 1
     breathe()
-    if os.clock() - _lastStatus < 0.25 then return end
-    _lastStatus = os.clock()
+    if clock() - _lastStatus < 0.25 then return end
+    _lastStatus = clock()
     local pct = 0
     if total and total > 0 then
-        pct = math.min(100, math.floor((current / total) * 100))
+        pct = math.min(100, floor((current / total) * 100))
     end
     setStatusText(prefix .. " " .. current .. "/" .. tostring(total) .. " (" .. pct .. "%)")
 end
@@ -458,24 +495,50 @@ local function f64(n) return string.pack("<d", n) end
 local function i32(n) return string.pack("<i4", n) end
 local function wstr(s) return u32(#s) .. s end
 
+local CLEAN_PAT = "[\0-\8\11\12\14-\31&<>\"']"
+local CLEAN_MAP = { ["&"] = "&amp;", ["<"] = "&lt;", [">"] = "&gt;", ['"'] = "&quot;", ["'"] = "&apos;" }
+for i = 0, 31 do
+    if i ~= 9 and i ~= 10 and i ~= 13 then CLEAN_MAP[schar(i)] = "" end
+end
+
+local function fixUtf8(s)
+    if utf8.len(s) then return s end
+    local out, n, i, len = {}, 0, 1, #s
+    while i <= len do
+        local _, bad = utf8.len(s, i)
+        if not bad then
+            n = n + 1
+            out[n] = s:sub(i)
+            break
+        end
+        if bad > i then
+            n = n + 1
+            out[n] = s:sub(i, bad - 1)
+        end
+        i = bad + 1
+    end
+    return tconcat(out)
+end
+
 local function clean(s)
-    s = tostring(s)
-    s = s:gsub("[%z\1-\8\11\12\14-\31]", "")
-    s = s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")
-    s = s:gsub('"', "&quot;"):gsub("'", "&apos;")
-    return s
+    if type(s) ~= "string" then s = tostring(s) end
+    s = fixUtf8(s)
+    if not sfind(s, CLEAN_PAT) then return s end
+    return (sgsub(s, CLEAN_PAT, CLEAN_MAP))
 end
 
 local function nm(x)
-    if type(x) ~= "number" then return "0" end
-    if x ~= x then return "0" end
-    if x == math.huge then return "1e308" end
-    if x == -math.huge then return "-1e308" end
-    if x == math.floor(x) and math.abs(x) < 1e15 then return string.format("%d", x) end
-    return string.format("%.10g", x)
+    if type(x) ~= "number" or x ~= x then return "0" end
+    if x == huge then return "1e308" end
+    if x == -huge then return "-1e308" end
+    if x == floor(x) and abs(x) < 1e15 then return fmt("%d", x) end
+    return fmt("%.10g", x)
 end
 
 local function isRealContent(name) return REAL_CONTENT_PROPS[name] == true end
+
+local URI_ACCESSORS = {"Source","Uri","Url","URL","Value","Text","String","AssetId","AssetID","Id","ID","Content","source","uri","url","value"}
+local URI_METHODS = {"ToString","GetSource","GetUri","GetUrl"}
 
 local function extractUri(v)
     if v == nil then return nil end
@@ -492,8 +555,7 @@ local function extractUri(v)
         return nil
     end
     if tv == "number" then return "rbxassetid://" .. tostring(v) end
-    local accessors = {"Source","Uri","Url","URL","Value","Text","String","AssetId","AssetID","Id","ID","Content","source","uri","url","value"}
-    for _, key in ipairs(accessors) do
+    for _, key in ipairs(URI_ACCESSORS) do
         local ok, s = pcall(function() return v[key] end)
         if ok and type(s) == "string" and s ~= "" then
             local inner = extractUri(s)
@@ -501,8 +563,7 @@ local function extractUri(v)
         end
         if ok and type(s) == "number" then return "rbxassetid://" .. tostring(s) end
     end
-    local methods = {"ToString","GetSource","GetUri","GetUrl"}
-    for _, m in ipairs(methods) do
+    for _, m in ipairs(URI_METHODS) do
         local ok, f = pcall(function() return v[m] end)
         if ok and type(f) == "function" then
             local ok2, s = pcall(f, v)
@@ -551,23 +612,25 @@ local function serContentTag(name, uri) return '<Content name="' .. clean(name) 
 local function serString(name, v) if type(v) ~= "string" then return nil end return '<string name="' .. clean(name) .. '">' .. clean(v) .. '</string>' end
 local function serProtectedString(name, v) if type(v) ~= "string" then v = "" end return '<ProtectedString name="' .. clean(name) .. '">' .. clean(v) .. '</ProtectedString>' end
 local function serBool(name, v) if type(v) ~= "boolean" then v = v and true or false end return '<bool name="' .. clean(name) .. '">' .. (v and "true" or "false") .. '</bool>' end
-local function serInt(name, v) return '<int name="' .. clean(name) .. '">' .. string.format("%d", v) .. '</int>' end
-local function serInt64(name, v) return '<int64 name="' .. clean(name) .. '">' .. string.format("%d", v) .. '</int64>' end
+local function serInt(name, v) return '<int name="' .. clean(name) .. '">' .. fmt("%d", v) .. '</int>' end
+local function serInt64(name, v) return '<int64 name="' .. clean(name) .. '">' .. fmt("%d", v) .. '</int64>' end
 local function serFloat(name, v) return '<float name="' .. clean(name) .. '">' .. nm(v) .. '</float>' end
 local function serDouble(name, v) return '<double name="' .. clean(name) .. '">' .. nm(v) .. '</double>' end
 local function serNumber(name, v)
-    if v == math.floor(v) and v >= -2147483648 and v <= 2147483647 then return serInt(name, v) end
-    if v == math.floor(v) and math.abs(v) < 9007199254740992 then return serInt64(name, v) end
+    if v == floor(v) and v >= -2147483648 and v <= 2147483647 then return serInt(name, v) end
+    if v == floor(v) and abs(v) < 9007199254740992 then return serInt64(name, v) end
     return serDouble(name, v)
 end
+local serNumberAs = { float = serFloat, double = serDouble, int = serInt, int64 = serInt64 }
 local function serVector2(name, v) return '<Vector2 name="' .. clean(name) .. '"><X>' .. nm(v.X) .. '</X><Y>' .. nm(v.Y) .. '</Y></Vector2>' end
 local function serVector3(name, v) return '<Vector3 name="' .. clean(name) .. '"><X>' .. nm(v.X) .. '</X><Y>' .. nm(v.Y) .. '</Y><Z>' .. nm(v.Z) .. '</Z></Vector3>' end
 local function serCFrame(name, v)
-    local ok, r = pcall(function() return {v:GetComponents()} end)
-    if not ok or not r then return nil end
-    local s = '<CoordinateFrame name="' .. clean(name) .. '"><X>' .. nm(r[1]) .. '</X><Y>' .. nm(r[2]) .. '</Y><Z>' .. nm(r[3]) .. '</Z>'
-    for i = 0, 2 do for j = 0, 2 do s = s .. '<R' .. i .. j .. '>' .. nm(r[i * 3 + j + 4]) .. '</R' .. i .. j .. '>' end end
-    return s .. '</CoordinateFrame>'
+    local x, y, z, r00, r01, r02, r10, r11, r12, r20, r21, r22 = v:GetComponents()
+    return '<CoordinateFrame name="' .. clean(name) .. '"><X>' .. nm(x) .. '</X><Y>' .. nm(y) .. '</Y><Z>' .. nm(z)
+        .. '</Z><R00>' .. nm(r00) .. '</R00><R01>' .. nm(r01) .. '</R01><R02>' .. nm(r02)
+        .. '</R02><R10>' .. nm(r10) .. '</R10><R11>' .. nm(r11) .. '</R11><R12>' .. nm(r12)
+        .. '</R12><R20>' .. nm(r20) .. '</R20><R21>' .. nm(r21) .. '</R21><R22>' .. nm(r22)
+        .. '</R22></CoordinateFrame>'
 end
 local function serColor3(name, v) return '<Color3 name="' .. clean(name) .. '"><R>' .. nm(v.R) .. '</R><G>' .. nm(v.G) .. '</G><B>' .. nm(v.B) .. '</B></Color3>' end
 local function serBrickColor(name, v) return '<BrickColor name="' .. clean(name) .. '">' .. tostring(v.Number) .. '</BrickColor>' end
@@ -576,18 +639,20 @@ local function serUDim2(name, v) return '<UDim2 name="' .. clean(name) .. '"><XS
 local function serRect(name, v) return '<Rect name="' .. clean(name) .. '"><min><X>' .. nm(v.Min.X) .. '</X><Y>' .. nm(v.Min.Y) .. '</Y></min><max><X>' .. nm(v.Max.X) .. '</X><Y>' .. nm(v.Max.Y) .. '</Y></max></Rect>' end
 local function serNumberRange(name, v) return '<NumberRange name="' .. clean(name) .. '"><Min>' .. nm(v.Min) .. '</Min><Max>' .. nm(v.Max) .. '</Max></NumberRange>' end
 local function serNumberSequence(name, v)
-    local s = '<NumberSequence name="' .. clean(name) .. '">'
-    for _, k in ipairs(v.Keypoints) do s = s .. '<Keypoint><Time>' .. nm(k.Time) .. '</Time><Value>' .. nm(k.Value) .. '</Value><Envelope>' .. nm(k.Envelope) .. '</Envelope></Keypoint>' end
-    return s .. '</NumberSequence>'
+    local parts = { '<NumberSequence name="' .. clean(name) .. '">' }
+    for _, k in ipairs(v.Keypoints) do parts[#parts + 1] = '<Keypoint><Time>' .. nm(k.Time) .. '</Time><Value>' .. nm(k.Value) .. '</Value><Envelope>' .. nm(k.Envelope) .. '</Envelope></Keypoint>' end
+    parts[#parts + 1] = '</NumberSequence>'
+    return tconcat(parts)
 end
 local function serColorSequence(name, v)
-    local s = '<ColorSequence name="' .. clean(name) .. '">'
-    for _, k in ipairs(v.Keypoints) do s = s .. '<Keypoint><Time>' .. nm(k.Time) .. '</Time><Color><R>' .. nm(k.Value.R) .. '</R><G>' .. nm(k.Value.G) .. '</G><B>' .. nm(k.Value.B) .. '</B></Color></Keypoint>' end
-    return s .. '</ColorSequence>'
+    local parts = { '<ColorSequence name="' .. clean(name) .. '">' }
+    for _, k in ipairs(v.Keypoints) do parts[#parts + 1] = '<Keypoint><Time>' .. nm(k.Time) .. '</Time><Color><R>' .. nm(k.Value.R) .. '</R><G>' .. nm(k.Value.G) .. '</G><B>' .. nm(k.Value.B) .. '</B></Color></Keypoint>' end
+    parts[#parts + 1] = '</ColorSequence>'
+    return tconcat(parts)
 end
 local function serEnumItem(name, v)
-    local ok, val = pcall(function() return v.Value end)
-    if ok and type(val) == "number" then return '<token name="' .. clean(name) .. '">' .. tostring(val) .. '</token>' end
+    local val = v.Value
+    if type(val) == "number" then return '<token name="' .. clean(name) .. '">' .. tostring(val) .. '</token>' end
     return nil
 end
 local function serTokenNumber(name, v)
@@ -596,46 +661,44 @@ local function serTokenNumber(name, v)
     if ok and type(val) == "number" then return '<token name="' .. clean(name) .. '">' .. tostring(val) .. '</token>' end
     return nil
 end
+local FACE_KEYS = {"Top","Bottom","Left","Right","Front","Back"}
+local AXIS_KEYS = {"X","Y","Z"}
 local function serFaces(name, v)
     local f, base = 0, 1
-    for _, k in ipairs({"Top","Bottom","Left","Right","Front","Back"}) do if v[k] then f = f + base end base = base * 2 end
+    for _, k in ipairs(FACE_KEYS) do if v[k] then f = f + base end base = base * 2 end
     return '<token name="' .. clean(name) .. '">' .. f .. '</token>'
 end
 local function serAxes(name, v)
     local f, base = 0, 1
-    for _, k in ipairs({"X","Y","Z"}) do if v[k] then f = f + base end base = base * 2 end
+    for _, k in ipairs(AXIS_KEYS) do if v[k] then f = f + base end base = base * 2 end
     return '<token name="' .. clean(name) .. '">' .. f .. '</token>'
 end
 
 local Walker = { refs = {}, refCount = 0, totalInst = 0 }
 
 local function serInstance(name, v)
-    if Walker.refs[v] then return '<Ref name="' .. clean(name) .. '">' .. Walker.refs[v] .. '</Ref>' end
+    local r = Walker.refs[v]
+    if r then return '<Ref name="' .. clean(name) .. '">' .. r .. '</Ref>' end
     return nil
 end
 local function serPhysicalProps(name, v)
-    local ok, body = pcall(function()
-        return '<Density>' .. nm(v.Density) .. '</Density><Friction>' .. nm(v.Friction) .. '</Friction><Elasticity>' .. nm(v.Elasticity) .. '</Elasticity><FrictionWeight>' .. nm(v.FrictionWeight) .. '</FrictionWeight><ElasticityWeight>' .. nm(v.ElasticityWeight) .. '</ElasticityWeight>'
-    end)
-    if not ok or not body then return nil end
-    return '<PhysicalProperties name="' .. clean(name) .. '">' .. body .. '</PhysicalProperties>'
+    return '<PhysicalProperties name="' .. clean(name) .. '"><Density>' .. nm(v.Density) .. '</Density><Friction>' .. nm(v.Friction) .. '</Friction><Elasticity>' .. nm(v.Elasticity) .. '</Elasticity><FrictionWeight>' .. nm(v.FrictionWeight) .. '</FrictionWeight><ElasticityWeight>' .. nm(v.ElasticityWeight) .. '</ElasticityWeight></PhysicalProperties>'
 end
 local function serBinaryString(name, v)
     if type(v) ~= "string" then return nil end
     return '<BinaryString name="' .. clean(name) .. '">' .. b64(v) .. '</BinaryString>'
 end
 local function serRay(name, v)
-    local ok, o, d = pcall(function() return v.Origin, v.Direction end)
-    if not ok then return nil end
+    local o, d = v.Origin, v.Direction
     return '<Ray name="' .. clean(name) .. '"><Origin><X>' .. nm(o.X) .. '</X><Y>' .. nm(o.Y) .. '</Y><Z>' .. nm(o.Z) .. '</Z></Origin><Direction><X>' .. nm(d.X) .. '</X><Y>' .. nm(d.Y) .. '</Y><Z>' .. nm(d.Z) .. '</Z></Direction></Ray>'
 end
 local function serFont(name, v)
     local parts = {}
-    pcall(function() table.insert(parts, '<Family>' .. clean(v.Family) .. '</Family>') end)
-    pcall(function() table.insert(parts, '<Weight>' .. tostring(v.Weight.Value) .. '</Weight>') end)
-    pcall(function() table.insert(parts, '<Style>' .. tostring(v.Style.Value) .. '</Style>') end)
+    pcall(function() parts[#parts + 1] = '<Family>' .. clean(v.Family) .. '</Family>' end)
+    pcall(function() parts[#parts + 1] = '<Weight>' .. tostring(v.Weight.Value) .. '</Weight>' end)
+    pcall(function() parts[#parts + 1] = '<Style>' .. tostring(v.Style.Value) .. '</Style>' end)
     if #parts == 0 then return nil end
-    return '<Font name="' .. clean(name) .. '">' .. table.concat(parts) .. '</Font>'
+    return '<Font name="' .. clean(name) .. '">' .. tconcat(parts) .. '</Font>'
 end
 
 local serByType = {
@@ -658,26 +721,83 @@ String class incase anything fails, we use this as a backup
 ]]
 
 
-
 local specialPropHandlers = { Shape = serTokenNumber, Face = serTokenNumber, Material = serTokenNumber }
 
-local function serializeProp(name, v)
-    if v == nil then return nil end
-    if shouldSkipProp(name) then return nil end
+local SHARED_PROPS = toSet({"PhysicalConfigData","ChildData2","MeshData2"})
+local STRING_TYPES = toSet({"string","ProtectedString"})
+local TYPE_ALIAS = { OptionalCoordinateFrame = "CFrame", Content = "Content", ContentId = "string" }
+
+local sharedPool, sharedOrder = {}, {}
+
+local function resetShared()
+    sharedPool, sharedOrder = {}, {}
+end
+
+local function serShared(name, data)
+    local k = sharedPool[data]
+    if not k then
+        k = b64(fmt("LXSS%012d", #sharedOrder + 1))
+        sharedPool[data] = k
+        sharedOrder[#sharedOrder + 1] = { k, data }
+    end
+    return '<SharedString name="' .. clean(name) .. '">' .. k .. '</SharedString>'
+end
+
+local function sharedBlock()
+    if #sharedOrder == 0 then return nil end
+    local parts = { '<SharedStrings>' }
+    for _, pair in ipairs(sharedOrder) do
+        parts[#parts + 1] = '<SharedString md5="' .. pair[1] .. '">' .. b64(pair[2]) .. '</SharedString>'
+    end
+    parts[#parts + 1] = '</SharedStrings>'
+    return tconcat(parts, "\n")
+end
+
+local function typeOk(vt, v)
+    local tv = typeof(v)
+    if NUMBER_TYPES[vt] then return tv == "number" end
+    if vt == "bool" then return tv == "boolean" end
+    if STRING_TYPES[vt] then return tv == "string" end
+    if vt == "Enum" then return tv == "EnumItem" or tv == "number" end
+    if vt == "Instance" then return tv == "Instance" end
+    local want = TYPE_ALIAS[vt] or vt
+    if want == "Content" then return tv == "Content" or tv == "string" end
+    return tv == want
+end
+
+local function serValue(name, v, numType, vt)
+    if SHARED_PROPS[name] or vt == "SharedString" then
+        if type(v) == "string" and #v > 0 then return serShared(name, v) end
+        return nil
+    end
+    if BINARY_PROPS[name] or vt == "BinaryString" then
+        if type(v) == "string" then return '<BinaryString name="' .. clean(name) .. '">' .. b64(v) .. '</BinaryString>' end
+        return nil
+    end
+    if vt and not typeOk(vt, v) then return nil end
     if BINARY_PROPS[name] and type(v) == "string" then
         return '<BinaryString name="' .. clean(name) .. '">' .. b64(v) .. '</BinaryString>'
     end
-    if type(v) == "boolean" then return serBool(name, v) end
+    local tv = type(v)
+    if tv == "boolean" then return serBool(name, v) end
     local special = specialPropHandlers[name]
     if special then local s = special(name, v) if s then return s end end
-    local t = typeof(v)
-    if t == "EnumItem" then return serEnumItem(name, v) end
-    local fn = serByType[t]
-    if not fn and type(v) == "boolean" then fn = serBool end
-    if not fn then return nil end
+    local fn
+    if tv == "number" and numType and (v == floor(v) or numType == "float" or numType == "double") then
+        fn = serNumberAs[numType]
+    else
+        fn = serByType[typeof(v)]
+    end
+    if not fn then return nil, true end
     local ok, s = pcall(fn, name, v)
     if ok and s and s ~= "" then return s end
     return nil
+end
+
+local function serializeProp(name, v, vt)
+    if v == nil then return nil end
+    if shouldSkipProp(name) then return nil end
+    return (serValue(name, v, nil, vt))
 end
 
 local function propsViaGetProperties(inst)
@@ -685,9 +805,18 @@ local function propsViaGetProperties(inst)
     local ok, list = pcall(IO.getproperties, inst)
     if not ok or type(list) ~= "table" then return nil end
     local out = {}
-    for _, k in ipairs(list) do
-        if type(k) == "string" and not shouldSkipProp(k) and isPropValid(inst.ClassName, k) then
-            table.insert(out, k)
+    local cls = inst.ClassName
+    if type(list[1]) == "string" then
+        for _, k in ipairs(list) do
+            if type(k) == "string" and not shouldSkipProp(k) and isPropValid(cls, k) then
+                out[#out + 1] = k
+            end
+        end
+    else
+        for k in pairs(list) do
+            if type(k) == "string" and not shouldSkipProp(k) and isPropValid(cls, k) then
+                out[#out + 1] = k
+            end
         end
     end
     return out
@@ -704,27 +833,14 @@ end
 
 local function indexProp(inst, name) return inst[name] end
 
-local defaultValues = {}
 local NOVALUE = {}
-local function defaultValue(cls, defaultInst, k)
-    local vals = defaultValues[cls]
-    if not vals then vals = {} defaultValues[cls] = vals end
-    local dv = vals[k]
-    if dv == nil then
-        local ok, got = pcall(indexProp, defaultInst, k)
-        dv = (ok and got ~= nil) and got or NOVALUE
-        vals[k] = dv
-    end
-    if dv == NOVALUE then return nil end
-    return dv
-end
 
-local function valuesEqual(a, b)
+local function isSame(a, b)
     if a == b then return true end
-    local ta, tb = typeof(a), typeof(b)
-    if ta ~= tb then return false end
-    if ta == "number" then return math.abs(a - b) < 1e-6 end
-    if ta == "string" or ta == "boolean" then return a == b end
+    local ta = typeof(a)
+    if ta ~= typeof(b) then return false end
+    if ta == "number" then return abs(a - b) < 1e-6 end
+    if EQ_RELIABLE[ta] then return false end
     local ok1, s1 = pcall(tostring, a)
     local ok2, s2 = pcall(tostring, b)
     if ok1 and ok2 then return s1 == s2 end
@@ -733,24 +849,23 @@ end
 
 local function modelIsCharacter(m)
     if not m then return false end
-    local ok, player = pcall(function() return Players:GetPlayerFromCharacter(m) end)
+    local ok, player = pcall(Players.GetPlayerFromCharacter, Players, m)
     if ok and player then return true end
-    local ok2, hum = pcall(function() return m:FindFirstChildOfClass("Humanoid") end)
+    local ok2, hum = pcall(m.FindFirstChildOfClass, m, "Humanoid")
     if ok2 and hum then
-        local ok3, hrp = pcall(function() return m:FindFirstChild("HumanoidRootPart") end)
+        local ok3, hrp = pcall(m.FindFirstChild, m, "HumanoidRootPart")
         if ok3 and hrp then return true end
     end
     return false
 end
 
-local function isCharacter(inst, opts, charRefs)
+local function isCharacter(inst, cls, opts, charRefs)
     if not opts.StripCharacters then return false end
-    if not inst then return false end
     if charRefs[inst] then return true end
     if not inst:IsA("Model") then
-        if CHARACTER_CLASSES[inst.ClassName] then
-            local okp2, parent = pcall(function() return inst.Parent end)
-            if okp2 and parent and parent:IsA("Model") and modelIsCharacter(parent) then
+        if CHARACTER_CLASSES[cls] then
+            local parent = inst.Parent
+            if parent and parent:IsA("Model") and modelIsCharacter(parent) then
                 charRefs[inst] = true
                 return true
             end
@@ -759,7 +874,7 @@ local function isCharacter(inst, opts, charRefs)
     end
     if modelIsCharacter(inst) then
         charRefs[inst] = true
-        local okd, desc = pcall(function() return inst:GetDescendants() end)
+        local okd, desc = pcall(inst.GetDescendants, inst)
         if okd and desc then for _, d in ipairs(desc) do charRefs[d] = true end end
         return true
     end
@@ -767,27 +882,30 @@ local function isCharacter(inst, opts, charRefs)
 end
 
 local function nameIsCore(inst, opts, coreRefs)
-    if not opts.StripCoreScripts then return false end
-    local ok, n = pcall(function() return inst.Name end)
-    if not ok or not n then return false end
+    if not opts.StripCoreScripts or next(CORE_SCRIPT_NAMES) == nil then return false end
+    local n = inst.Name
     if CORE_SCRIPT_NAMES[n] then coreRefs[inst] = true return true end
     return false
 end
 
-local CORE_CONTAINERS = { PlayerScripts = true, PlayerGui = true, StarterPlayer = true }
+local CORE_CONTAINERS = { PlayerScripts = true, PlayerGui = true }
 
 local function keepInst(inst, opts, charRefs, coreRefs)
-    if isCharacter(inst, opts, charRefs) then return false end
-    if nameIsCore(inst, opts, coreRefs) then return false end
-    if inst:IsA("Lighting") then return true end
-    if opts.IgnoreNotArchivable then
-        local ok, ar = pcall(function() return inst.Archivable end)
-        if ok and ar == false then return false end
-    end
+    if charRefs[inst] then return false end
+    local cls = inst.ClassName
     local parent = inst.Parent
     if parent and charRefs[parent] then return false end
     if parent and coreRefs[parent] then return false end
-    if parent == game and SKIP_SVC[inst.ClassName] then return false end
+    if parent == game and not GAME_SVC[cls] then return false end
+    if parent and ROBLOX_JUNK[inst.Name] and JUNK_PARENTS[parent.ClassName] then return false end
+    if cls == "Player" and parent == Players then return false end
+    if isCharacter(inst, cls, opts, charRefs) then return false end
+    if nameIsCore(inst, opts, coreRefs) then return false end
+    if cls == "Lighting" then return true end
+    if opts.IgnoreNotArchivable then
+        local ok, ar = pcall(indexProp, inst, "Archivable")
+        if ok and ar == false then return false end
+    end
     return true
 end
 
@@ -796,21 +914,27 @@ local function canKeep(inst, opts, charRefs, coreRefs)
     return ok and keep == true
 end
 
-local function walkRef(root, d, opts, refs, charRefs, coreRefs)
+local function walkRef(root, d, opts, refs, kidsOf, charRefs, coreRefs)
     if d > opts.Depth then return end
     if refs[root] then return end
-    Walker.refCount = Walker.refCount + 1
-    refs[root] = "RBX" .. Walker.refCount
-    if Walker.refCount % 2000 == 0 then
-        setStatusText("Saving game.. scanning " .. Walker.refCount)
+    local n = Walker.refCount + 1
+    Walker.refCount = n
+    refs[root] = "RBX" .. n
+    if n % 2000 == 0 then
+        setStatusText("Saving game.. scanning " .. n)
     end
     breathe()
     if opts.StripCoreScripts and CORE_CONTAINERS[root.ClassName] then return end
     local ok, kids = pcall(root.GetChildren, root)
-    if not ok or not kids then return end
+    if not ok or not kids or #kids == 0 then return end
+    local kept = {}
     for _, c in ipairs(kids) do
-        if canKeep(c, opts, charRefs, coreRefs) then walkRef(c, d + 1, opts, refs, charRefs, coreRefs) end
+        if canKeep(c, opts, charRefs, coreRefs) then
+            walkRef(c, d + 1, opts, refs, kidsOf, charRefs, coreRefs)
+            if refs[c] then kept[#kept + 1] = c end
+        end
     end
+    if #kept > 0 then kidsOf[root] = kept end
 end
 
 local readMode = {}
@@ -839,70 +963,26 @@ local function readProp(inst, name)
     return nil
 end
 
-local function emitContentProp(buf, inst, pad, propName)
-    local raw = readProp(inst, propName)
-    if raw == nil then return end
-    local uri = extractUri(raw)
-    if not uri then return end
-    table.insert(buf, pad .. '    ' .. serContentTag(propName, uri))
-end
-
-local function emitSingleProp(buf, inst, pad, seen, k, opts, defaultInst)
-    if seen[k] or shouldSkipProp(k) then return end
-    if opts.APIProperties and not isPropValid(inst.ClassName, k) then return end
-    if isRealContent(k) then
-        seen[k] = true
-        emitContentProp(buf, inst, pad, k)
-    else
-        local v = readProp(inst, k)
-        if v ~= nil then
-            seen[k] = true
-            local skip = false
-            if defaultInst then
-                local dv = defaultValue(inst.ClassName, defaultInst, k)
-                if dv ~= nil then
-                    local ok1, eq = pcall(valuesEqual, v, dv)
-                    if ok1 and eq then skip = true end
-                end
-            end
-            if not skip then
-                local s = serializeProp(k, v)
-                if s then table.insert(buf, pad .. '    ' .. s) end
-            end
-        end
-    end
-end
-
-local function emitPropsFromList(buf, inst, pad, seen, list, opts)
-    local cls = inst.ClassName
-    local defaultInst = opts.IgnoreDefaultProps and getDefault(cls) or nil
-    for _, k in ipairs(list) do
-        emitSingleProp(buf, inst, pad, seen, k, opts, defaultInst)
-    end
-end
-
 local function encodeTags(inst)
     local tags = CollectionService:GetTags(inst)
     if type(tags) ~= "table" or #tags == 0 then return nil end
-    return table.concat(tags, "\0")
+    return tconcat(tags, "\0")
 end
 
-local function emitAttributesAndTags(buf, inst, pad, opts)
+local function emitAttributesAndTags(buf, inst, opts)
     if opts.EmitAttributes then
-        local ok, attrs = pcall(function() return inst:GetAttributes() end)
+        local ok, attrs = pcall(inst.GetAttributes, inst)
         if ok and type(attrs) == "table" and next(attrs) ~= nil then
-            local success, encoded = pcall(function()
-                return HttpService:JSONEncode(attrs)
-            end)
+            local success, encoded = pcall(HttpService.JSONEncode, HttpService, attrs)
             if success and encoded and #encoded > 0 then
-                table.insert(buf, pad .. '    <BinaryString name="AttributesSerialize">' .. b64(encoded) .. '</BinaryString>')
+                buf[#buf + 1] = '<BinaryString name="AttributesSerialize">' .. b64(encoded) .. '</BinaryString>'
             end
         end
     end
     if opts.EmitTags then
         local ok, encoded = pcall(encodeTags, inst)
         if ok and encoded then
-            table.insert(buf, pad .. '    <BinaryString name="Tags">' .. b64(encoded) .. '</BinaryString>')
+            buf[#buf + 1] = '<BinaryString name="Tags">' .. b64(encoded) .. '</BinaryString>'
         end
     end
 end
@@ -914,63 +994,173 @@ local function shouldEmitInMode(cls, mode)
     return true
 end
 
-local emitInst
-
 local GEOMETRY_PROPS = {
-    UnionOperation = {"AssetId", "InitialSize", "ChildData", "ChildData2", "MeshData", "MeshData2", "PhysicsData", "PhysicalConfigData", "FormFactor", "UsePartColor", "RenderFidelity", "CollisionFidelity", "SmoothingAngle"},
-    MeshPart = {"MeshId", "InitialSize", "PhysicsData", "PhysicalConfigData", "RenderFidelity", "CollisionFidelity", "HasJointOffset", "HasSkinnedMesh", "JointOffset"},
+    UnionOperation = {"AssetId", "ChildData", "ChildData2", "MeshData", "MeshData2", "PhysicsData", "PhysicalConfigData", "FormFactor", "UsePartColor", "RenderFidelity", "CollisionFidelity", "SmoothingAngle"},
+    MeshPart = {"MeshId", "PhysicsData", "PhysicalConfigData", "RenderFidelity", "CollisionFidelity", "HasJointOffset", "HasSkinnedMesh", "JointOffset"},
 }
+local GEOMETRY_CLASSES = toSet({"UnionOperation","IntersectOperation","NegateOperation","PartOperation","MeshPart"})
 
 local emitInst
 
 local propPlans = {}
 local decompiledByBytecode = {}
+
 local function propPlan(inst, cls, opts)
     local plan = propPlans[cls]
     if plan then return plan end
+    reflectClass(cls)
     plan = {}
     local added = {}
-    local function add(list, useDefault)
+    local apiSet = apiClassProps[cls]
+    local hiddenSet = apiHidden[cls]
+    local typeSet = apiTypes[cls]
+    local canHidden = IO.gethiddenproperty ~= nil
+    local function add(list, useDefault, critical)
         if not list then return end
         for _, k in ipairs(list) do
-            if not added[k] and not shouldSkipProp(k) and (not opts.APIProperties or isPropValid(cls, k)) then
-                added[k] = true
-                plan[#plan + 1] = { k, useDefault, isRealContent(k) }
+            if not added[k] and not PLAN_SKIP[k] and not shouldSkipProp(k) then
+                local valid
+                if critical then
+                    valid = apiSet == nil or apiSet[k] == true
+                else
+                    valid = not opts.APIProperties or isPropValid(cls, k)
+                end
+                local hidden = hiddenSet ~= nil and hiddenSet[k] == true
+                if valid and (canHidden or not hidden) then
+                    added[k] = true
+                    local vt = typeSet and typeSet[k]
+                    local base = #k > 7 and k:sub(-7) == "Content" and k:sub(1, -8) or nil
+                    plan[#plan + 1] = {
+                        name = k,
+                        alias = base and { base, base .. "Id", base .. "ID" } or nil,
+                        useDefault = useDefault,
+                        content = isRealContent(k) or vt == "Content",
+                        numType = vt and NUMBER_TYPES[vt] and vt or nil,
+                        vt = vt,
+                        mode = hidden and 2 or nil,
+                        hidden = hidden,
+                    }
+                end
             end
         end
     end
     add(INSTANCE_SPECIFIC[cls], true)
-    add(CRITICAL_PROPS, true)
+    add(CRITICAL_PROPS, true, true)
     add(propsViaGetProperties(inst), false)
-    propPlans[cls] = plan
-    return plan
+    local visibleLower = {}
+    for _, e in ipairs(plan) do
+        if not e.hidden then visibleLower[e.name:lower()] = true end
+    end
+    local final = {}
+    for _, e in ipairs(plan) do
+        if not (e.hidden and visibleLower[e.name:lower()] and not BINARY_PROPS[e.name]) then
+            final[#final + 1] = e
+        end
+    end
+    propPlans[cls] = final
+    return final
 end
 
-local function emitProps(own, inst, cls, pad, opts, decompileCache)
+local function readEntry(inst, e, gh)
+    local k = e.name
+    local mode = e.mode
+    if mode == 2 then
+        local ok, hv = pcall(gh, inst, k)
+        if ok and hv ~= nil then
+            e.probed = true
+            return hv
+        end
+        if not e.probed then e.dead = true end
+        return nil
+    end
+    local ok, v = pcall(indexProp, inst, k)
+    if ok then
+        e.mode = 1
+        return v
+    end
+    if mode == 1 then return nil end
+    if gh then
+        local okH, hv = pcall(gh, inst, k)
+        if okH and hv ~= nil then
+            e.mode = 2
+            return hv
+        end
+    end
+    e.dead = true
+    return nil
+end
+
+local function readDefault(defaultInst, e, gh)
+    local ok, got
+    if e.mode == 2 then
+        ok, got = pcall(gh, defaultInst, e.name)
+    else
+        ok, got = pcall(indexProp, defaultInst, e.name)
+    end
+    if ok and got ~= nil then return got end
+    return NOVALUE
+end
+
+local function emitProps(buf, inst, cls, opts, decompileCache)
     local seen = {}
     local defaultInst = opts.IgnoreDefaultProps and getDefault(cls) or nil
     local plan = propPlan(inst, cls, opts)
+    local gh = IO.gethiddenproperty
+    local aliasUris
     for i = 1, #plan do
-        local entry = plan[i]
-        local k = entry[1]
-        if entry[3] then
-            seen[k] = true
-            emitContentProp(own, inst, pad, k)
-        else
-            local v = readProp(inst, k)
+        local e = plan[i]
+        if not e.dead then
+            local v = readEntry(inst, e, gh)
             if v ~= nil then
+                local k = e.name
                 seen[k] = true
-                local same = false
-                if entry[2] and defaultInst then
-                    local dv = defaultValue(cls, defaultInst, k)
-                    if dv ~= nil then
-                        local ok1, eq = pcall(valuesEqual, v, dv)
-                        same = ok1 and eq == true
+                if e.alias then
+                    local uri = extractUri(v)
+                    if uri then
+                        aliasUris = aliasUris or {}
+                        aliasUris[#aliasUris + 1] = { e.alias, uri }
+                    end
+                elseif e.content then
+                    local uri = extractUri(v)
+                    if uri then buf[#buf + 1] = serContentTag(k, uri) end
+                else
+                    local same = false
+                    if e.useDefault and defaultInst then
+                        local dv = e.def
+                        if dv == nil then
+                            dv = readDefault(defaultInst, e, gh)
+                            e.def = dv
+                        end
+                        if dv ~= NOVALUE then same = isSame(v, dv) end
+                    end
+                    if not same then
+                        local str, unsupported = serValue(k, v, e.numType, e.vt)
+                        if str then
+                            buf[#buf + 1] = str
+                        elseif unsupported then
+                            e.dead = true
+                        end
                     end
                 end
-                if not same then
-                    local str = serializeProp(k, v)
-                    if str then own[#own + 1] = pad .. '    ' .. str end
+            end
+        end
+    end
+
+    if aliasUris then
+        for _, pair in ipairs(aliasUris) do
+            local cands = pair[1]
+            local done = false
+            for _, c in ipairs(cands) do
+                if seen[c] then done = true break end
+            end
+            if not done then
+                for _, c in ipairs(cands) do
+                    local ok = pcall(indexProp, inst, c)
+                    if ok then
+                        buf[#buf + 1] = serContentTag(c, pair[2])
+                        seen[c] = true
+                        break
+                    end
                 end
             end
         end
@@ -980,22 +1170,23 @@ local function emitProps(own, inst, cls, pad, opts, decompileCache)
         local name = readProp(inst, "Name")
         if name then
             if opts.Anonymous then
-                local ok, p = pcall(function() return Players:GetPlayerFromCharacter(inst) end)
+                local ok, p = pcall(Players.GetPlayerFromCharacter, Players, inst)
                 if ok and p then name = "Player_" .. tostring(p.UserId) end
             end
-            table.insert(own, pad .. '    <string name="Name">' .. clean(name) .. '</string>')
+            buf[#buf + 1] = '<string name="Name">' .. clean(name) .. '</string>'
         end
     end
 
-    emitAttributesAndTags(own, inst, pad, opts)
+    emitAttributesAndTags(buf, inst, opts)
 
     if cls == "Script" then
         local src = tostring(DATA.server_script_placeholder or "")
-        table.insert(own, pad .. '    <ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>')
+        buf[#buf + 1] = '<ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>'
     elseif cls == "LocalScript" or cls == "ModuleScript" then
-        local src = readProp(inst, "Source")
-        if decompileCache and decompileCache[inst] then src = decompileCache[inst] end
-        if (not src or src == "") and opts.Decompile and opts._decompileFn then
+        local src = decompileCache and decompileCache[inst]
+        if not src then src = readProp(inst, "Source") end
+        local tried = opts._decompileTried and opts._decompileTried[inst]
+        if (not src or src == "") and opts.Decompile and opts._decompileFn and not tried then
             local key
             if opts._bytecodeFn then
                 local okb, bc = pcall(opts._bytecodeFn, inst)
@@ -1019,29 +1210,57 @@ local function emitProps(own, inst, cls, pad, opts, decompileCache)
         if not src or src == "" then
             src = "-- [LX Serializer] No source recovered for " .. tostring(cls) .. " \"" .. tostring(readProp(inst, "Name")) .. "\""
         end
-        table.insert(own, pad .. '    <ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>')
+        buf[#buf + 1] = '<ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>'
     end
 
-    if cls == "UnionOperation" or cls == "IntersectOperation" or cls == "NegateOperation" or cls == "PartOperation" or cls == "MeshPart" then
+    if GEOMETRY_CLASSES[cls] then
+        local gTypes = apiTypes[cls]
         for _, bp in ipairs(GEOMETRY_PROPS[cls] or GEOMETRY_PROPS.UnionOperation) do
             if not seen[bp] then
                 local raw = readProp(inst, bp)
-                if type(raw) == "string" and #raw > 0 then
-                    if bp == "AssetId" then
-                        local uri = extractUri(raw)
-                        if uri then table.insert(own, pad .. '    ' .. serContentTag(bp, uri)) end
-                    else
-                        table.insert(own, pad .. '    <BinaryString name="' .. bp .. '">' .. b64(raw) .. '</BinaryString>')
+                local isContent = bp == "AssetId" or REAL_CONTENT_PROPS[bp]
+                if isContent then
+                    local uri = raw ~= nil and extractUri(raw) or nil
+                    if uri then
+                        buf[#buf + 1] = serContentTag(bp, uri)
+                        seen[bp] = true
                     end
-                    seen[bp] = true
                 elseif raw ~= nil then
-                    local str = (bp == "AssetId") and extractUri(raw) and serContentTag(bp, extractUri(raw)) or serializeProp(bp, raw)
+                    local str = serializeProp(bp, raw, gTypes and gTypes[bp])
                     if str then
-                        table.insert(own, pad .. '    ' .. str)
+                        buf[#buf + 1] = str
                         seen[bp] = true
                     end
                 end
             end
+        end
+    end
+
+    if GEOMETRY_CLASSES[cls] then
+        local function okSize(v)
+            return typeof(v) == "Vector3" and v.X == v.X and v.Y == v.Y and v.Z == v.Z
+                and v.X > 0 and v.Y > 0 and v.Z > 0
+                and v.X < math.huge and v.Y < math.huge and v.Z < math.huge
+        end
+        local init
+        if IO.gethiddenproperty then
+            local ok, hv = pcall(IO.gethiddenproperty, inst, "InitialSize")
+            if ok and okSize(hv) then init = hv end
+        end
+        if not init then
+            local ok, v = pcall(indexProp, inst, "InitialSize")
+            if ok and okSize(v) then init = v end
+        end
+        if not init and cls == "MeshPart" then
+            local ok, v = pcall(indexProp, inst, "MeshSize")
+            if ok and okSize(v) then init = v end
+        end
+        if not init then
+            local ok, v = pcall(indexProp, inst, "Size")
+            if ok and okSize(v) then init = v end
+        end
+        if init then
+            buf[#buf + 1] = serVector3("InitialSize", init)
         end
     end
 
@@ -1051,7 +1270,7 @@ local function emitProps(own, inst, cls, pad, opts, decompileCache)
             if not seen[bp] then
                 local ok, raw = pcall(IO.gethiddenproperty, inst, bp)
                 if ok and type(raw) == "string" and #raw > 0 then
-                    table.insert(own, pad .. '    <BinaryString name="' .. bp .. '">' .. b64(raw) .. '</BinaryString>')
+                    buf[#buf + 1] = '<BinaryString name="' .. bp .. '">' .. b64(raw) .. '</BinaryString>'
                 end
             end
         end
@@ -1059,43 +1278,140 @@ local function emitProps(own, inst, cls, pad, opts, decompileCache)
 
 end
 
-emitInst = function(buf, inst, d, opts, decompileCache, refs, totalRefs)
+local openItems = 0
+
+local function safeEmit(buf, inst, opts, decompileCache, refs, kidsOf, totalRefs)
+    local before = openItems
+    local ok, err = pcall(emitInst, buf, inst, opts, decompileCache, refs, kidsOf, totalRefs)
+    if not ok then
+        log("Skipped " .. tostring(refs[inst]) .. ": " .. tostring(err))
+    end
+    while openItems > before do
+        buf[#buf + 1] = '</Item>'
+        openItems = openItems - 1
+    end
+end
+
+emitInst = function(buf, inst, opts, decompileCache, refs, kidsOf, totalRefs)
     local ref = refs[inst]
     if not ref then return end
     local cls = inst.ClassName
+    local kids = kidsOf[inst]
 
     if not shouldEmitInMode(cls, opts.Mode) then
-        local okc, kids = pcall(inst.GetChildren, inst)
-        if okc and kids then for _, c in ipairs(kids) do if refs[c] then emitInst(buf, c, d, opts, decompileCache, refs, totalRefs) end end end
+        if kids then for i = 1, #kids do safeEmit(buf, kids[i], opts, decompileCache, refs, kidsOf, totalRefs) end end
         return
     end
 
     Walker.totalInst = Walker.totalInst + 1
     bumpStatus("Saving", Walker.totalInst, totalRefs)
 
-    local pad = string.rep("  ", d)
-    local own = {}
-    local ok, err = pcall(emitProps, own, inst, cls, pad, opts, decompileCache)
+    local start = #buf
+    buf[start + 1] = '<Item class="' .. cls .. '" referent="' .. ref .. '">'
+    buf[start + 2] = '<Properties>'
+    local ok, err = pcall(emitProps, buf, inst, cls, opts, decompileCache)
     if not ok then
+        for i = #buf, start + 1, -1 do buf[i] = nil end
         log("Skipped " .. tostring(ref) .. " (" .. tostring(cls) .. "): " .. tostring(err))
         return
     end
+    buf[#buf + 1] = '</Properties>'
+    openItems = openItems + 1
 
-    buf[#buf + 1] = pad .. '<Item class="' .. clean(cls) .. '" referent="' .. ref .. '">'
-    buf[#buf + 1] = pad .. '  <Properties>'
-    for i = 1, #own do buf[#buf + 1] = own[i] end
-    buf[#buf + 1] = pad .. '  </Properties>'
+    if kids then for i = 1, #kids do safeEmit(buf, kids[i], opts, decompileCache, refs, kidsOf, totalRefs) end end
 
-    local okc, kids = pcall(inst.GetChildren, inst)
-    if okc and kids then for _, c in ipairs(kids) do if refs[c] then emitInst(buf, c, d + 1, opts, decompileCache, refs, totalRefs) end end end
-
-    buf[#buf + 1] = pad .. '</Item>'
+    buf[#buf + 1] = '</Item>'
+    openItems = openItems - 1
 
     local sink = opts._sink
-    if sink and #buf >= 16384 then
-        sink:write(table.concat(buf, "\n") .. "\n")
-        table.clear(buf)
+    if sink and #buf >= 32768 then
+        sink:write(tconcat(buf, "\n") .. "\n")
+        tclear(buf)
     end
+end
+
+local function timedCall(fn, arg, limit)
+    local finished, okr, res = false, false, nil
+    task.spawn(function()
+        okr, res = pcall(fn, arg)
+        finished = true
+    end)
+    local t = clock()
+    while not finished and clock() - t < limit do task.wait() end
+    if not finished then return nil end
+    if okr and type(res) == "string" and res ~= "" then return true, res end
+    return false
+end
+
+local function prefetchScripts(refs, opts, cache)
+    if not opts.Decompile or not opts._decompileFn or opts.Mode == "models" then return end
+    local bcFn = opts._bytecodeFn
+    local groups, order = {}, {}
+    local tried = opts._decompileTried
+    for inst in pairs(refs) do
+        local cls = inst.ClassName
+        if cls == "LocalScript" or cls == "ModuleScript" then
+            local src = readProp(inst, "Source")
+            if type(src) ~= "string" or src == "" then
+                local key
+                if bcFn then
+                    local okb, bc = pcall(bcFn, inst)
+                    if okb and type(bc) == "string" and bc ~= "" then key = bc end
+                end
+                local hit = key and decompiledByBytecode[key]
+                if hit then
+                    cache[inst] = hit
+                else
+                    local gk = key or inst
+                    local g = groups[gk]
+                    if not g then
+                        g = {}
+                        groups[gk] = g
+                        order[#order + 1] = gk
+                    end
+                    g[#g + 1] = inst
+                end
+            end
+        end
+        breathe()
+    end
+    local total = #order
+    if total == 0 then return end
+    local decomp = opts._decompileFn
+    local limit = tonumber(opts.DecompileTimeout) or 10
+    local threads = math.clamp(floor(tonumber(opts.MaxThreads) or 1), 1, 32)
+    if threads > total then threads = total end
+    local nextIdx, done, finished = 0, 0, 0
+    local function worker()
+        while true do
+            nextIdx = nextIdx + 1
+            local idx = nextIdx
+            if idx > total then break end
+            local gk = order[idx]
+            local g = groups[gk]
+            local okd, out = timedCall(decomp, g[1], limit)
+            if okd == false then
+                okd, out = timedCall(decomp, g[1], limit)
+            end
+            if okd and type(out) == "string" and out ~= "" then
+                if type(gk) == "string" then decompiledByBytecode[gk] = out end
+                for _, s in ipairs(g) do cache[s] = out end
+            end
+            for _, s in ipairs(g) do tried[s] = true end
+            done = done + 1
+            bumpStatus("Decompiling", done, total)
+        end
+    end
+    setStatusText("Decompiling 0/" .. total)
+    for _ = 1, threads do
+        task.spawn(function()
+            pcall(worker)
+            finished = finished + 1
+        end)
+    end
+    while finished < threads do task.wait() end
+    _lastYield = clock()
+    log("Decompiled " .. total .. " unique scripts using " .. threads .. " threads")
 end
 
 local function placeName()
@@ -1132,17 +1448,16 @@ local function buildReadmeSource()
     return out
 end
 
-local function buildReadmeXML(depth)
-    local pad = string.rep("  ", depth)
+local function buildReadmeXML()
     local src = buildReadmeSource()
-    return table.concat({
-        pad .. '<Item class="Script" referent="RBX_README">',
-        pad .. '  <Properties>',
-        pad .. '    <string name="Name">README</string>',
-        pad .. '    <bool name="Disabled">false</bool>',
-        pad .. '    <ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>',
-        pad .. '  </Properties>',
-        pad .. '</Item>',
+    return tconcat({
+        '<Item class="Script" referent="RBX_README">',
+        '<Properties>',
+        '<string name="Name">README</string>',
+        '<bool name="Disabled">false</bool>',
+        '<ProtectedString name="Source">' .. clean(src) .. '</ProtectedString>',
+        '</Properties>',
+        '</Item>',
     }, "\n")
 end
 
@@ -1178,7 +1493,7 @@ local function moveBackpackToStarter()
                 local origParent = tool.Parent
                 local okMove = pcall(function() tool.Parent = sp end)
                 if okMove then
-                    table.insert(_pendingRestore, {tool = tool, orig = origParent})
+                    _pendingRestore[#_pendingRestore + 1] = {tool = tool, orig = origParent}
                 end
             end
         end
@@ -1212,7 +1527,7 @@ Sink.__index = Sink
 function Sink.new(path, chunk)
     local s = setmetatable({}, Sink)
     s.path = path
-    s.chunk = chunk or 262144
+    s.chunk = chunk or 4194304
     s.buf = {}
     s.size = 0
     s.total = 0
@@ -1222,8 +1537,8 @@ end
 
 function Sink:flush()
     if #self.buf == 0 or self.failed then return end
-    local blob = table.concat(self.buf)
-    table.clear(self.buf)
+    local blob = tconcat(self.buf)
+    tclear(self.buf)
     self.size = 0
     if not pcall(IO.appendfile, self.path, blob) then
         self.failed = true
@@ -1240,6 +1555,7 @@ function Sink:write(str)
 end
 
 function Sink:finish()
+    self.closed = true
     self:flush()
     if self.failed then return false end
     log("Streamed to file: " .. self.path .. " (" .. self.total .. " bytes)")
@@ -1273,9 +1589,11 @@ function Fish.Save(instance, name, userOpts)
 
     _statusAccum = 0
     _lastStatus = 0
-    table.clear(propPlans)
-    table.clear(decompiledByBytecode)
-    _lastYield = os.clock()
+    tclear(propPlans)
+    tclear(decompiledByBytecode)
+    openItems = 0
+    resetShared()
+    _lastYield = clock()
     ensureOutFolder()
     log("Starting save (" .. tostring(opts.Mode) .. ")")
     setStatusText("Saving game..")
@@ -1304,7 +1622,9 @@ function Fish.Save(instance, name, userOpts)
     local charRefs = {}
     local coreRefs = {}
     local refs = {}
+    local kidsOf = {}
     Walker.refs = refs
+    opts._decompileTried = {}
 
     if opts.RemovePlayerCharacters then
         local okp, plist = pcall(function() return Players:GetPlayers() end)
@@ -1322,9 +1642,9 @@ function Fish.Save(instance, name, userOpts)
 
     local roots = {}
     if type(instance) == "table" then
-        for _, r in ipairs(instance) do if typeof(r) == "Instance" then table.insert(roots, r) end end
+        for _, r in ipairs(instance) do if typeof(r) == "Instance" then roots[#roots + 1] = r end end
     elseif typeof(instance) == "Instance" then
-        table.insert(roots, instance)
+        roots[#roots + 1] = instance
     end
 
     if #roots == 0 then
@@ -1340,28 +1660,33 @@ function Fish.Save(instance, name, userOpts)
         didMoveBackpack = okM
     end
 
+    local pendingBuf = {}
     local okSave, result = pcall(function()
+        local services = nil
         for _, root in ipairs(roots) do
             if root == game then
                 local ok0, kids0 = pcall(function() return game:GetChildren() end)
                 if ok0 and kids0 then
+                    services = kids0
                     for _, svc in ipairs(kids0) do
-                        if canKeep(svc, opts, charRefs, coreRefs) then walkRef(svc, 1, opts, refs, charRefs, coreRefs) end
+                        if canKeep(svc, opts, charRefs, coreRefs) then walkRef(svc, 1, opts, refs, kidsOf, charRefs, coreRefs) end
                     end
                 end
             else
-                if canKeep(root, opts, charRefs, coreRefs) then walkRef(root, 1, opts, refs, charRefs, coreRefs) end
+                if canKeep(root, opts, charRefs, coreRefs) then walkRef(root, 1, opts, refs, kidsOf, charRefs, coreRefs) end
             end
         end
 
         log("Walked " .. Walker.refCount .. " instances")
-        local buf = {}
+        local buf = pendingBuf
         local decompileCache = {}
+
+        prefetchScripts(refs, opts, decompileCache)
 
         setStatusText("Saving game.. writing")
 
-        table.insert(buf, '<?xml version="1.0" encoding="utf-8"?>')
-        table.insert(buf, '<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">')
+        buf[#buf + 1] = '<?xml version="1.0" encoding="utf-8"?>'
+        buf[#buf + 1] = '<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">'
 -- Another list of APIS i personally use alot for XML related stuff
         local finalName = name or placeName()
         local fname = finalName .. ".rbxlx"
@@ -1372,55 +1697,53 @@ function Fish.Save(instance, name, userOpts)
         if opts.StreamToFile and IO.appendfile and not opts.Callback and not opts.Clipboard then
             sink = Sink.new(primaryPath, opts.StreamChunk)
             opts._sink = sink
-            sink:write(table.concat(buf, "\n") .. "\n")
-            buf = {}
+            sink:write(tconcat(buf, "\n") .. "\n")
+            tclear(buf)
         end
 
+        local total = Walker.refCount
         local readmeEmitted = false
         for _, root in ipairs(roots) do
             if root == game then
-                local ok0, kids0 = pcall(function() return game:GetChildren() end)
-                if ok0 and kids0 then
-                    for _, svc in ipairs(kids0) do
+                if services then
+                    for _, svc in ipairs(services) do
                         if refs[svc] then
-                            emitInst(buf, svc, 1, opts, decompileCache, refs, Walker.refCount)
-                            if opts._readmeXMLFn and not readmeEmitted and svc:IsA("Lighting") then
-                                local readmeXml = opts._readmeXMLFn(1)
+                            safeEmit(buf, svc, opts, decompileCache, refs, kidsOf, total)
+                            if opts._readmeXMLFn and not readmeEmitted and svc.ClassName == "Lighting" then
+                                local readmeXml = opts._readmeXMLFn()
                                 if readmeXml then
-                                    table.insert(buf, readmeXml)
+                                    buf[#buf + 1] = readmeXml
                                     readmeEmitted = true
                                 end
-                            end
-                            if sink and #buf > 0 then
-                                sink:write(table.concat(buf, "\n") .. "\n")
-                                buf = {}
                             end
                         end
                     end
                 end
             else
-                if refs[root] then emitInst(buf, root, 1, opts, decompileCache, refs, Walker.refCount) end
-                if sink and #buf > 0 then
-                    sink:write(table.concat(buf, "\n") .. "\n")
-                    buf = {}
-                end
+                if refs[root] then safeEmit(buf, root, opts, decompileCache, refs, kidsOf, total) end
+            end
+            if sink and #buf > 0 then
+                sink:write(tconcat(buf, "\n") .. "\n")
+                tclear(buf)
             end
         end
 
         if opts._readmeXMLFn and not readmeEmitted then
-            local readmeXml = opts._readmeXMLFn(1)
+            local readmeXml = opts._readmeXMLFn()
             if readmeXml then
-                table.insert(buf, readmeXml)
+                buf[#buf + 1] = readmeXml
                 readmeEmitted = true
             end
         end
 
-        table.insert(buf, '</roblox>')
+        local ssb = sharedBlock()
+        if ssb then buf[#buf + 1] = ssb end
+        buf[#buf + 1] = '</roblox>'
 
         local xml
         if sink then
-            sink:write(table.concat(buf, "\n"))
-            buf = {}
+            sink:write(tconcat(buf, "\n"))
+            tclear(buf)
             if not sink:finish() then
                 setStatusText("Failed: could not write " .. primaryPath)
                 Status.fade(8)
@@ -1428,15 +1751,15 @@ function Fish.Save(instance, name, userOpts)
             end
             xml = primaryPath
         else
-            xml = table.concat(buf, "\n")
+            xml = tconcat(buf, "\n")
         end
 
         local elapsed = tick() - t0
 
         if sink and xml == primaryPath then
-            log("XML streamed to " .. primaryPath .. " in " .. string.format("%.2fs", elapsed))
+            log("XML streamed to " .. primaryPath .. " in " .. fmt("%.2fs", elapsed))
         else
-            log("XML: " .. #xml .. " bytes, " .. Walker.totalInst .. " items emitted in " .. string.format("%.2fs", elapsed))
+            log("XML: " .. #xml .. " bytes, " .. Walker.totalInst .. " items emitted in " .. fmt("%.2fs", elapsed))
         end
 
         if opts.Callback and type(opts.Callback) == "function" then
@@ -1452,9 +1775,9 @@ function Fish.Save(instance, name, userOpts)
         end
 
         local paths = {}
-        if opts.FilePath then table.insert(paths, opts.FilePath) end
-        table.insert(paths, primaryPath)
-        table.insert(paths, fname)
+        if opts.FilePath then paths[#paths + 1] = opts.FilePath end
+        paths[#paths + 1] = primaryPath
+        paths[#paths + 1] = fname
 
         local wrote = (sink ~= nil and xml == primaryPath)
         if not wrote then
@@ -1480,10 +1803,26 @@ function Fish.Save(instance, name, userOpts)
             return xml
         end
 
-        setStatusText("Saved to " .. primaryPath .. " in " .. string.format("%.1fs", elapsed))
+        setStatusText("Saved to " .. primaryPath .. " in " .. fmt("%.1fs", elapsed))
         Status.fade(5)
         return xml
     end)
+
+    local leftSink = opts._sink
+    opts._sink = nil
+    if not okSave and leftSink and not leftSink.closed then
+        pcall(function()
+            if #pendingBuf > 0 then leftSink:write(tconcat(pendingBuf, "\n") .. "\n") end
+            local tail = {}
+            for _ = 1, openItems do tail[#tail + 1] = '</Item>' end
+            local ssb = sharedBlock()
+            if ssb then tail[#tail + 1] = ssb end
+            tail[#tail + 1] = '</roblox>'
+            openItems = 0
+            leftSink:write(tconcat(tail, "\n"))
+            leftSink:finish()
+        end)
+    end
 
     if didMoveBackpack then
         restoreBackpack()
@@ -1592,5 +1931,3 @@ if Fish.Options.AutoRun then
         run("place")
     end)
 end
-
-return Fish
