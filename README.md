@@ -1,7 +1,7 @@
 <div align="center">
 
 <img src="icon.png" alt="LX Serializer Icon" width="150" />
-
+ 
 # LX Serializer
 
 **A Roblox place serializer written in Lua.**
