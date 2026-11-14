@@ -19,7 +19,7 @@ LX Serializer saves Roblox instances and their properties to `.rbxlx` files that
  
 ## Overview
 
-LX Serializer reads the DataModel of a running Roblox game and saves the instances it can access. It supports property discovery, terrain data, CSG and union data, attributes, tags, and script extraction.
+LX Serializer reads the DataModel of a running Roblox game and saves the instances it can access. It supports property discovery, terrain data, CSG and union data, attributes, tags, and script extraction. 
 
 You can save an entire place, export scripts separately, save models without scripts, or choose a specific instance to save.
 
